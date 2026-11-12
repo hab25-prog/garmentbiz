@@ -1,0 +1,255 @@
+.materials-page {
+  width: 100%;
+}
+
+.materials-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+.materials-heading h1 {
+  font-size: 25px;
+  margin: 0 0 7px;
+}
+
+.materials-heading p {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.materials-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.materials-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 300px;
+  max-width: 100%;
+  padding: 0 12px;
+  height: 40px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+}
+
+.materials-search input {
+  border: 0;
+  outline: 0;
+  width: 100%;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.refresh-button,
+.cancel-button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 13px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.refresh-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.materials-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.materials-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.materials-table th {
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 15px;
+}
+
+.materials-table td {
+  padding: 14px 15px;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.material-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.material-icon {
+  width: 35px;
+  height: 35px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--primary);
+  background: var(--primary-light);
+}
+
+.material-name strong,
+.material-name span {
+  display: block;
+}
+
+.material-name strong {
+  font-size: 12px;
+}
+
+.material-name span {
+  color: var(--muted);
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+.stock-status {
+  display: inline-block;
+  padding: 5px 9px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.stock-status.low {
+  color: #b45309;
+  background: #fef3c7;
+}
+
+.stock-status.normal {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.materials-count {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 13px;
+}
+
+.material-form {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 22px;
+  margin-bottom: 20px;
+}
+
+.material-form h3 {
+  font-size: 15px;
+  margin: 0 0 20px;
+}
+
+.material-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 17px;
+}
+
+.material-form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.material-form-grid input,
+.material-form-grid select {
+  width: 100%;
+  height: 40px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  outline: none;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.material-form-grid input:focus,
+.material-form-grid select:focus {
+  border-color: var(--primary);
+}
+
+.material-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.materials-error {
+  padding: 12px 15px;
+  margin-bottom: 15px;
+  border: 1px solid #fecaca;
+  border-radius: 7px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 12px;
+}
+
+.materials-loading,
+.materials-empty {
+  padding: 12px;
+  margin-bottom: 16px;
+  border-radius: 7px;
+  color: var(--muted);
+  background: var(--bg);
+  font-size: 12px;
+}
+
+.table-message {
+  text-align: center;
+  padding: 35px !important;
+  color: var(--muted) !important;
+}
+
+@media (max-width: 650px) {
+  .materials-heading {
+    align-items: flex-start;
+  }
+
+  .materials-heading h1 {
+    font-size: 21px;
+  }
+
+  .material-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .materials-toolbar {
+    align-items: stretch;
+  }
+}

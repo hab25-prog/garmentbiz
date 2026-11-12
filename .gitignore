@@ -1,0 +1,24 @@
+# Generated Prisma configuration and seed build artifacts
+/api/prisma.config.js
+/api/prisma.config.js.map
+/api/prisma.config.d.ts
+/api/prisma.config.d.ts.map
+/api/prisma/seed.js
+/api/prisma/seed.js.map
+/api/prisma/seed.d.ts
+/api/prisma/seed.d.ts.map
+/web/prototype.html
+
+# Environment files and secrets
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+# Dependencies
+node_modules/
+**/node_modules/
+# Dependencies
+node_modules/
+**/node_modules/
