@@ -24,6 +24,8 @@
     BlinkMacSystemFont,
     "Segoe UI",
     sans-serif;
+  width: 100%;
+  overflow-x: clip;
 }
 
 .app-shell.dark {
@@ -44,6 +46,7 @@
   flex-direction: column;
   transition: width 0.2s;
   min-height: 100vh;
+  min-width: 0;
 }
 
 .sidebar.collapsed {
@@ -167,6 +170,7 @@
 .main-area {
   flex: 1;
   min-width: 0;
+  width: 0;
 }
 
 .topbar {
@@ -272,6 +276,7 @@
   max-width: 1500px;
   margin: auto;
   padding: 30px;
+  min-width: 0;
 }
 
 .page-heading {
@@ -544,16 +549,18 @@
   }
 }
 
-@media (max-width: 650px) {
+@media (max-width: 800px) {
   .sidebar {
     width: 76px;
   }
 
   .sidebar:not(.collapsed) {
-    width: 220px;
-    position: absolute;
-    z-index: 5;
-    min-height: 100%;
+    width: 255px;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 20;
+    min-height: 100dvh;
+    box-shadow: 12px 0 30px rgb(15 23 42 / 18%);
   }
 
   .sidebar.collapsed .nav-heading,
@@ -564,8 +571,39 @@
   }
 
   .topbar {
-    padding: 0 13px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding-inline: 18px;
+  }
+}
+
+@media (max-width: 650px) {
+  .sidebar {
+    width: 76px;
+  }
+
+  .sidebar:not(.collapsed) {
+    width: min(285px, calc(100vw - 52px));
+  }
+
+  .sidebar.collapsed .nav-heading,
+  .sidebar.collapsed .nav-item span,
+  .sidebar.collapsed .brand > div:last-child,
+  .sidebar.collapsed .sidebar-footer {
+    display: none;
+  }
+
+  .topbar {
+    height: 64px;
+    padding: 0 10px;
     gap: 8px;
+  }
+
+  .breadcrumb {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .topbar-actions {
@@ -579,7 +617,7 @@
   }
 
   .page-content {
-    padding: 20px 13px;
+    padding: 20px 12px;
   }
 
   .page-heading h1 {
@@ -601,5 +639,34 @@
   .demo-notice {
     flex-direction: column;
     gap: 5px;
+  }
+
+  .page-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .page-heading .primary-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .panel {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 420px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .topbar-actions {
+    gap: 2px;
+  }
+
+  .user-profile {
+    padding-left: 6px;
   }
 }
