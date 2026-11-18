@@ -5,6 +5,16 @@ body {
   min-height: 100%;
   width: 100%;
   overflow-x: clip;
+  scroll-behavior: smooth;
+}
+
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 img,
@@ -28,4 +38,12 @@ select,
 textarea,
 button {
   min-width: 0;
+}
+
+button {
+  touch-action: manipulation;
+}
+
+table {
+  border-spacing: 0;
 }

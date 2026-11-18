@@ -6,6 +6,7 @@
   --auth-muted: #7b8496;
   --auth-border: #e8ebf1;
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
   place-items: center;
   padding: 24px;
@@ -255,7 +256,31 @@
 }
 
 @media (max-width: 480px) {
+  .auth-route-state {
+    align-items: start;
+    padding: max(16px, env(safe-area-inset-top)) 14px max(16px, env(safe-area-inset-bottom));
+  }
+
   .auth-route-card {
-    padding: 28px 22px;
+    padding: 26px 20px;
+    margin-block: auto;
+  }
+
+  .auth-route-card h1 {
+    font-size: clamp(20px, 6vw, 23px);
+  }
+
+  .auth-route-footer {
+    line-height: 1.6;
+  }
+}
+
+@media (max-width: 360px) {
+  .auth-route-card {
+    padding: 23px 16px;
+  }
+
+  .auth-route-footer a {
+    display: inline-block;
   }
 }

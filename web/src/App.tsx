@@ -67,7 +67,9 @@ const navigation = [
 function AppShell() {
   const { user, membership, logout } = useAuth();
   const [activePage, setActivePage] = useState("Dashboard");
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(min-width: 801px)").matches,
+  );
   const [darkMode, setDarkMode] = useState(false);
 
   return (
@@ -95,7 +97,12 @@ function AppShell() {
               <button
                 key={item.name}
                 className={`nav-item ${activePage === item.name ? "active" : ""}`}
-                onClick={() => setActivePage(item.name)}
+                onClick={() => {
+                  setActivePage(item.name);
+                  if (window.matchMedia("(max-width: 800px)").matches) {
+                    setSidebarOpen(false);
+                  }
+                }}
                 title={item.name}>
                 <item.icon size={19} />
                 {sidebarOpen && <span>{item.name}</span>}
@@ -114,6 +121,15 @@ function AppShell() {
           </div>
         )}
       </aside>
+
+      {sidebarOpen && (
+        <button
+          className="sidebar-backdrop"
+          type="button"
+          aria-label="Close navigation menu"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
 
       <main className="main-area">
         <header className="topbar">

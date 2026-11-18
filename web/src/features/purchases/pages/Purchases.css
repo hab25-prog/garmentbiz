@@ -218,13 +218,17 @@
 
 .purchases-table-wrapper {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   border: 1px solid var(--border);
   border-radius: 9px;
 }
 
 .purchases-table {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   text-align: left;
   white-space: nowrap;
@@ -331,5 +335,39 @@
 
   .purchase-form-actions {
     flex-wrap: wrap;
+  }
+
+  .purchases-page-header > button,
+  .purchase-form-actions > button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .purchase-search {
+    max-width: none;
+  }
+
+  .purchase-subtotal {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .purchase-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .purchase-summary-card {
+    padding: 14px;
+  }
+
+  .purchase-summary-card strong {
+    font-size: 19px;
+  }
+}
+
+@media (max-width: 380px) {
+  .purchase-summary {
+    grid-template-columns: 1fr;
   }
 }

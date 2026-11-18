@@ -73,7 +73,10 @@
 
 .materials-table-wrap {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -81,6 +84,7 @@
 
 .materials-table {
   width: 100%;
+  min-width: 680px;
   border-collapse: collapse;
   text-align: left;
   white-space: nowrap;
@@ -238,7 +242,8 @@
 
 @media (max-width: 650px) {
   .materials-heading {
-    align-items: flex-start;
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .materials-heading h1 {
@@ -251,5 +256,30 @@
 
   .materials-toolbar {
     align-items: stretch;
+    flex-direction: column;
+  }
+
+  .materials-search,
+  .materials-toolbar > button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .materials-search {
+    justify-content: flex-start;
+  }
+
+  .materials-heading > button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .material-form-actions > button {
+    flex: 1 1 130px;
+  }
+
+  .materials-table th,
+  .materials-table td {
+    padding: 12px;
   }
 }

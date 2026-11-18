@@ -80,7 +80,10 @@
 
 .supplier-table-container {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -88,6 +91,7 @@
 
 .supplier-table {
   width: 100%;
+  min-width: 760px;
   border-collapse: collapse;
   text-align: left;
   white-space: nowrap;
@@ -171,5 +175,14 @@
 
   .supplier-form-actions {
     flex-wrap: wrap;
+  }
+
+  .supplier-form-actions > button {
+    flex: 1 1 130px;
+  }
+
+  .supplier-table th,
+  .supplier-table td {
+    padding: 12px;
   }
 }

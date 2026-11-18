@@ -193,7 +193,10 @@
   .customer-form-grid { grid-template-columns: 1fr; }
   .customer-full-width { grid-column: auto; }
   .customer-form-actions { flex-wrap: wrap; }
+  .customer-form-actions > button { flex: 1 1 130px; }
   .customer-directory-heading { padding: 16px; }
   .customer-refresh span { display: none; }
   .customers-heading h1 { font-size: 22px; }
+  .customer-directory-actions { align-items: stretch; }
+  .customer-refresh { min-width: 40px; }
 }
