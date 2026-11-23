@@ -23,14 +23,28 @@ test("access JWTs verify identity, issuer, audience and expiry", async (t) => {
     else process.env.JWT_SECRET = previousSecret;
   });
 
-  const token = await createAccessToken({ userId: "user-1", membershipId: "membership-1", businessId: "business-1" });
+  const token = await createAccessToken({
+    userId: "user-1",
+    membershipId: "membership-1",
+    businessId: "business-1",
+  });
   const claims = await verifyAccessToken(token);
   assert.equal(claims.sub, "user-1");
   assert.equal(claims.mid, "membership-1");
   assert.equal(claims.bid, "business-1");
-  await assert.rejects(verifyAccessToken(`${token.slice(0, -1)}x`));
+  const tokenParts = token.split(".");
+  const signature = tokenParts[2];
 
-  const wrongAudience = await new SignJWT({ mid: "membership-1", bid: "business-1" })
+  assert.ok(signature);
+
+  tokenParts[2] = `${signature[0] === "A" ? "B" : "A"}${signature.slice(1)}`;
+
+  await assert.rejects(verifyAccessToken(tokenParts.join(".")));
+
+  const wrongAudience = await new SignJWT({
+    mid: "membership-1",
+    bid: "business-1",
+  })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setSubject("user-1")
     .setIssuer(JWT_ISSUER)
@@ -65,7 +79,10 @@ test("Argon2id hashes verify the original password and reject a different one", 
     type: argon2.argon2id,
   });
   assert.notEqual(passwordHash, "correct horse battery staple");
-  assert.equal(await argon2.verify(passwordHash, "correct horse battery staple"), true);
+  assert.equal(
+    await argon2.verify(passwordHash, "correct horse battery staple"),
+    true,
+  );
   assert.equal(await argon2.verify(passwordHash, "different password"), false);
 });
 
@@ -85,9 +102,18 @@ test("CSRF requires an allowed origin and matching cookie and request header", (
     }) as unknown as Request;
 
   try {
-    assert.equal(csrfRequestIsValid(makeRequest("https://garmentbiz.example", token)), true);
-    assert.equal(csrfRequestIsValid(makeRequest("https://attacker.example", token)), false);
-    assert.equal(csrfRequestIsValid(makeRequest("https://garmentbiz.example", "wrong")), false);
+    assert.equal(
+      csrfRequestIsValid(makeRequest("https://garmentbiz.example", token)),
+      true,
+    );
+    assert.equal(
+      csrfRequestIsValid(makeRequest("https://attacker.example", token)),
+      false,
+    );
+    assert.equal(
+      csrfRequestIsValid(makeRequest("https://garmentbiz.example", "wrong")),
+      false,
+    );
   } finally {
     if (previousOrigins === undefined) delete process.env.WEB_ORIGINS;
     else process.env.WEB_ORIGINS = previousOrigins;

@@ -14,6 +14,8 @@ export interface Material {
   description: string | null;
   reorderLevel: string;
   availableStock: string;
+  inventoryValue?: string;
+  isActive?: boolean;
   unit: {
     id?: string;
     name: string;
@@ -33,4 +35,8 @@ export interface CreateMaterialInput {
   sku?: string;
   type: MaterialType;
   reorderLevel: number;
+  description?: string;
 }
+export type UpdateMaterialInput = Partial<CreateMaterialInput> & {isActive?:boolean;description?:string|null};
+export interface InventorySummary {materials:Material[];totalItems:number;totalAvailableStock:string;totalInventoryValue:string;lowStock:Material[];outOfStock:Material[]}
+export interface StockMovement {id:string;materialId:string;movementType:string;quantity:string;referenceId:string|null;referenceType:string|null;notes:string|null;movementDate:string;material:Material}

@@ -38,6 +38,9 @@ import { useAuth } from "./features/auth/context/AuthProvider";
 import LoginPage from "./features/auth/pages/LoginPage";
 import RegisterPage from "./features/auth/pages/RegisterPage";
 import Loader from "./features/auth/components/Loader";
+import OrdersPage from "./features/orders/pages/OrdersPage";
+import ProductionPage from "./features/production/pages/ProductionPage";
+import InventoryPage from "./features/inventory/pages/InventoryPage";
 const navigation = [
   { title: "MAIN MENU" },
   { name: "Dashboard", icon: LayoutDashboard },
@@ -47,6 +50,7 @@ const navigation = [
   { name: "Products", icon: Package },
   { title: "INVENTORY" },
   { name: "Materials", icon: Boxes },
+  { name: "Inventory", icon: ClipboardList },
   { name: "Stock Movements", icon: ClipboardList },
   { name: "Low Stock", icon: BarChart3 },
   { name: "Purchases", icon: ShoppingCart },
@@ -187,10 +191,18 @@ function AppShell() {
             <ProductsPage />
           ) : activePage === "Materials" ? (
             <MaterialsPage />
+          ) : activePage === "Inventory" ? (
+            <InventoryPage />
+          ) : activePage === "Stock Movements" ? (
+            <InventoryPage initialTab="History" />
           ) : activePage === "Suppliers" ? (
             <SuppliersPage />
           ) : activePage === "Purchases" ? (
             <PurchasesPage />
+          ) : activePage === "Orders" ? (
+            <OrdersPage />
+          ) : activePage === "Production Batches" ? (
+            <ProductionPage />
           ) : (
             <div className="page-placeholder">
               <div className="page-icon">

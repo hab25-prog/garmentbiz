@@ -12,6 +12,9 @@ import employeesRoutes from "./modules/employees/employees.routes.js";
 import productsRoutes from "./modules/products/products.routes.js";
 import unitsRoutes from "./modules/units/units.routes.js";
 import authRoutes from "./modules/auth/auth.routes.js";
+import ordersRoutes from "./modules/orders/orders.routes.js";
+import inventoryRoutes from "./modules/inventory/inventory.routes.js";
+import productionRoutes from "./modules/production/production.routes.js";
 import {
   assertJwtConfiguration,
   getAllowedOrigins,
@@ -24,17 +27,22 @@ const PORT = Number(process.env.PORT) || 5000;
 const trustedProxyIps = process.env.TRUSTED_PROXY_IPS?.split(",")
   .map((entry) => entry.trim())
   .filter(Boolean);
-if (trustedProxyIps?.some((entry) => {
-  const [address, prefix, extra] = entry.split("/");
-  const version = isIP(address ?? "");
-  const maximumPrefix = version === 4 ? 32 : version === 6 ? 128 : 0;
-  return (
-    maximumPrefix === 0 ||
-    extra !== undefined ||
-    (prefix !== undefined && (!/^\d+$/.test(prefix) || Number(prefix) > maximumPrefix))
+if (
+  trustedProxyIps?.some((entry) => {
+    const [address, prefix, extra] = entry.split("/");
+    const version = isIP(address ?? "");
+    const maximumPrefix = version === 4 ? 32 : version === 6 ? 128 : 0;
+    return (
+      maximumPrefix === 0 ||
+      extra !== undefined ||
+      (prefix !== undefined &&
+        (!/^\d+$/.test(prefix) || Number(prefix) > maximumPrefix))
+    );
+  })
+) {
+  throw new Error(
+    "TRUSTED_PROXY_IPS must contain explicit IP addresses or CIDR ranges",
   );
-})) {
-  throw new Error("TRUSTED_PROXY_IPS must contain explicit IP addresses or CIDR ranges");
 }
 app.set("trust proxy", trustedProxyIps?.length ? trustedProxyIps : false);
 
@@ -48,7 +56,7 @@ app.use(
     },
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   }),
 );
 app.use(express.json());
@@ -60,6 +68,9 @@ app.use("/api/customers", customersRoutes);
 app.use("/api/employees", employeesRoutes);
 app.use("/api/products", productsRoutes);
 app.use("/api/units", unitsRoutes);
+app.use("/api/orders", ordersRoutes);
+app.use("/api/inventory", inventoryRoutes);
+app.use("/api/production", productionRoutes);
 
 app.get("/api/health", async (_req, res) => {
   try {
@@ -96,8 +107,8 @@ if (process.env.NODE_ENV === "production") {
     resolve(process.cwd(), "../web/dist"),
   ];
   const defaultFrontendDist = resolve(serverDirectory, "../../../web/dist");
-  const frontendDist = frontendDistCandidates.find(existsSync)
-    ?? defaultFrontendDist;
+  const frontendDist =
+    frontendDistCandidates.find(existsSync) ?? defaultFrontendDist;
   const frontendIndex = resolve(frontendDist, "index.html");
 
   app.use(express.static(frontendDist));

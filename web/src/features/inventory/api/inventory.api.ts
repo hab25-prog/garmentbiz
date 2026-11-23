@@ -1,0 +1,6 @@
+import {apiClient} from "../../../lib/api-client";
+import {fetchCsrfToken} from "../../auth/api/auth.api";
+import type {InventoryBalance,InventoryOperation,UnitConversion} from "../types/inventory.types";
+async function mutate<T>(url:string,body:unknown):Promise<T>{const csrf=await fetchCsrfToken();return apiClient.post<T>(url,body,{headers:{"X-CSRF-Token":csrf}})}
+export const inventoryApi={balances:()=>apiClient.get<InventoryBalance[]>("/api/inventory/balances"),operations:()=>apiClient.get<InventoryOperation[]>("/api/inventory/operations"),conversions:()=>apiClient.get<UnitConversion[]>("/api/inventory/unit-conversions"),createConversion:(body:{fromUnitId:string;toUnitId:string;factor:string})=>mutate<UnitConversion>("/api/inventory/unit-conversions",body),
+ receive:(body:Record<string,string>)=>mutate<InventoryOperation>("/api/inventory/receipts",body),issue:(body:Record<string,string>)=>mutate<InventoryOperation>("/api/inventory/issues",body),returnStock:(body:Record<string,string>)=>mutate<InventoryOperation>("/api/inventory/returns",body),waste:(body:Record<string,string>)=>mutate<InventoryOperation>("/api/inventory/wastage",body),adjustIn:(body:Record<string,string>)=>mutate<InventoryOperation>("/api/inventory/adjustments/in",body),adjustOut:(body:Record<string,string>)=>mutate<InventoryOperation>("/api/inventory/adjustments/out",body)};

@@ -2,9 +2,14 @@ import type { Supplier } from "../types/supplier.types";
 
 interface SuppliersTableProps {
   suppliers: Supplier[];
+  isLoading: boolean;
 }
 
-export default function SuppliersTable({ suppliers }: SuppliersTableProps) {
+export default function SuppliersTable({ suppliers, isLoading }: SuppliersTableProps) {
+  if (isLoading) {
+    return <div className="supplier-empty-state"><p>Loading suppliers…</p></div>;
+  }
+
   if (suppliers.length === 0) {
     return (
       <div className="supplier-empty-state">

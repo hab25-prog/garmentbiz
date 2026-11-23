@@ -3,33 +3,14 @@ import { clearAccessToken, setAccessToken } from "../../../lib/access-token";
 import type {
   AuthenticatedProfile,
   AuthenticatedSession,
-  CsrfTokenResponse,
   LoginInput,
   RegisterInput,
 } from "../types/auth.types";
 
-let csrfToken: string | null = null;
-let csrfTokenRequest: Promise<string> | null = null;
 let refreshRequest: Promise<AuthenticatedSession> | null = null;
 
 export function fetchCsrfToken(): Promise<string> {
-  if (csrfToken) return Promise.resolve(csrfToken);
-  if (csrfTokenRequest) return csrfTokenRequest;
-
-  csrfTokenRequest = apiClient
-    .get<CsrfTokenResponse>("/api/auth/csrf", {
-      credentials: "include",
-      authenticated: false,
-    })
-    .then(({ csrfToken: token }) => {
-      csrfToken = token;
-      return token;
-    })
-    .finally(() => {
-      csrfTokenRequest = null;
-    });
-
-  return csrfTokenRequest;
+  return apiClient.getCsrfToken();
 }
 
 async function postWithCsrf<T>(endpoint: string, body?: unknown): Promise<T> {
@@ -79,8 +60,7 @@ export async function logout(): Promise<void> {
     await postWithCsrf<null>("/api/auth/logout");
   } finally {
     clearAccessToken();
-    csrfToken = null;
-    csrfTokenRequest = null;
+    apiClient.clearCsrfToken();
   }
 }
 

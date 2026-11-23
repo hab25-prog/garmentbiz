@@ -34,6 +34,9 @@ export async function createSupplierController(req: Request, res: Response) {
         });
       }
     }
+    if (typeof email === "string" && email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      return res.status(400).json({ success: false, message: "Enter a valid email address" });
+    }
 
     const supplier = await createSupplier({
       businessId,
@@ -58,6 +61,9 @@ export async function createSupplierController(req: Request, res: Response) {
         success: false,
         message: error.message,
       });
+    }
+    if (error instanceof Error && error.message === "A supplier with this name already exists for this business") {
+      return res.status(409).json({ success: false, message: error.message });
     }
 
     return res.status(500).json({

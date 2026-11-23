@@ -9,6 +9,7 @@ export interface Product {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  _count?: { materialRequirements: number };
 }
 
 export interface CreateProductInput {
@@ -17,4 +18,17 @@ export interface CreateProductInput {
   description?: string;
   category?: string;
   basePrice?: string;
+}
+
+export interface ProductMaterialRequirement {
+  id: string;
+  productId: string;
+  materialId: string;
+  quantityPerUnit: string;
+  material: {
+    id: string;
+    name: string;
+    sku: string | null;
+    unit: { id: string; name: string; code: string };
+  };
 }

@@ -9,6 +9,8 @@ import {
   registerController,
 } from "../src/modules/auth/auth.controller.js";
 import { requireCsrf } from "../src/middleware/auth.middleware.js";
+import authRoutes from "../src/modules/auth/auth.routes.js";
+import { DEFAULT_MEASUREMENT_UNITS } from "../src/modules/units/units.service.js";
 
 function request(body: unknown, origin = "http://localhost:5173"): Request {
   return {
@@ -105,4 +107,109 @@ test("CSRF middleware rejects state changes without valid anti-CSRF headers", ()
   requireCsrf(request({}), res, () => { nextCalled = true; });
   assert.equal(state.statusCode, 403);
   assert.equal(nextCalled, false);
+});
+
+test("POST /api/auth/register provisions isolated default units through its real controller flow", async (t) => {
+  const originalSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = "controller-test-jwt-secret-with-at-least-32-bytes";
+  t.after(() => {
+    if (originalSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = originalSecret;
+  });
+
+  const routes = (authRoutes as unknown as {
+    stack: Array<{ route?: { path: string; methods: Record<string, boolean>; stack: Array<{ handle: unknown }> } }>;
+  }).stack.flatMap((layer) => layer.route ? [layer.route] : []);
+  const registerRoute = routes.find((route) => route.path === "/register" && route.methods.post);
+  assert.ok(registerRoute);
+  assert.ok(registerRoute.stack.some((layer) => layer.handle === requireCsrf));
+  assert.ok(registerRoute.stack.some((layer) => layer.handle === registerController));
+
+  const persistedUnits: Array<{ businessId: string; name: string; code: string }> = [];
+  let registrationIndex = 0;
+  let activeMembership: { id: string; businessId: string; userId: string } | undefined;
+  const restoreTransaction = stubMethod(prisma, "$transaction", (async (callback: (transaction: unknown) => Promise<unknown>) => {
+    const index = ++registrationIndex;
+    const businessId = `registered-business-${index}`;
+    const userId = `registered-user-${index}`;
+    const membershipId = `registered-membership-${index}`;
+    const transaction = {
+      user: { create: async () => ({ id: userId }) },
+      business: { create: async () => ({ id: businessId }) },
+      unitOfMeasure: {
+        findMany: async ({ where }: { where: { businessId: string } }) => persistedUnits.filter((unit) => unit.businessId === where.businessId),
+        createMany: async (args: { data: Array<{ businessId: string; name: string; code: string }>; skipDuplicates: boolean }) => {
+          assert.equal(args.skipDuplicates, true);
+          assert.ok(args.data.every((unit) => unit.businessId === businessId));
+          persistedUnits.push(...args.data);
+          return { count: args.data.length };
+        },
+      },
+      membership: { create: async () => {
+        activeMembership = { id: membershipId, businessId, userId };
+        return { id: membershipId };
+      } },
+      session: { create: async () => ({ id: `session-${index}` }) },
+    };
+    return callback(transaction);
+  }) as never);
+  const restoreMembership = stubMethod(prisma.membership, "findFirst", (async () => ({
+    id: activeMembership?.id,
+    role: "OWNER",
+    business: { id: activeMembership?.businessId, name: `Workshop ${registrationIndex}` },
+    user: { id: activeMembership?.userId, fullName: "Test Owner", email: `owner-${registrationIndex}@example.test` },
+  })) as never);
+  t.after(restoreMembership);
+  t.after(restoreTransaction);
+
+  for (let index = 1; index <= 2; index += 1) {
+    const { res, state } = response();
+    await registerController(request({
+      fullName: "Test Owner",
+      email: `owner-${index}@example.test`,
+      password: "valid registration test password",
+      businessName: `Workshop ${index}`,
+    }), res);
+    assert.equal(state.statusCode, 201);
+  }
+
+  assert.equal(persistedUnits.length, DEFAULT_MEASUREMENT_UNITS.length * 2);
+  for (const businessId of ["registered-business-1", "registered-business-2"]) {
+    const units = persistedUnits.filter((unit) => unit.businessId === businessId);
+    assert.deepEqual(units.map(({ name, code }) => ({ name, code })), DEFAULT_MEASUREMENT_UNITS);
+  }
+});
+
+test("registration returns failure if default-unit creation fails inside the transaction", async (t) => {
+  const originalSecret = process.env.JWT_SECRET;
+  process.env.JWT_SECRET = "controller-test-jwt-secret-with-at-least-32-bytes";
+  t.after(() => {
+    if (originalSecret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = originalSecret;
+  });
+
+  let sessionCreated = false;
+  const restore = stubMethod(prisma, "$transaction", (async (callback: (transaction: unknown) => Promise<unknown>) => callback({
+    user: { create: async () => ({ id: "user-failure" }) },
+    business: { create: async () => ({ id: "business-failure" }) },
+    unitOfMeasure: {
+      findMany: async () => [],
+      createMany: async () => { throw new Error("unit insert failed"); },
+    },
+    membership: { create: async () => ({ id: "membership-failure" }) },
+    session: { create: async () => { sessionCreated = true; return { id: "session-failure" }; } },
+  })) as never);
+  t.after(restore);
+
+  const { res, state } = response();
+  await registerController(request({
+    fullName: "Test Owner",
+    email: "failure@example.test",
+    password: "valid registration test password",
+    businessName: "Workshop Failure",
+  }), res);
+
+  assert.equal(state.statusCode, 500);
+  assert.equal((state.body as { success: boolean }).success, false);
+  assert.equal(sessionCreated, false);
 });

@@ -2,13 +2,16 @@ import { useState } from "react";
 import { Package, Plus, RefreshCw, Search } from "lucide-react";
 import ProductForm from "../components/ProductForm";
 import ProductsTable from "../components/ProductsTable";
+import ProductMaterialRequirements from "../components/ProductMaterialRequirements";
 import { useCreateProduct, useProducts } from "../hooks/useProducts";
 import type { CreateProductInput } from "../types/product.types";
+import type { Product } from "../types/product.types";
 import "./Products.css";
 
 export default function ProductsPage() {
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
+  const [managingProduct, setManagingProduct] = useState<Product | null>(null);
   const productsQuery = useProducts();
   const createProduct = useCreateProduct();
   const products = productsQuery.data ?? [];
@@ -67,9 +70,10 @@ export default function ProductsPage() {
             </button>
           </div>
         </div>
-        <ProductsTable products={filteredProducts} isLoading={productsQuery.isLoading} />
+        <ProductsTable products={filteredProducts} isLoading={productsQuery.isLoading} onManageRequirements={setManagingProduct} />
         {!productsQuery.isLoading && products.length > 0 && <div className="product-results-count">Showing {filteredProducts.length} of {products.length} products</div>}
       </section>
+      {managingProduct && <ProductMaterialRequirements productId={managingProduct.id} productName={managingProduct.name} onClose={() => setManagingProduct(null)} />}
     </div>
   );
 }

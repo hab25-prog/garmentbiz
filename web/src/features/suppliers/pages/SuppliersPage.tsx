@@ -12,6 +12,7 @@ import "./Suppliers.css";
 export default function SuppliersPage() {
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const suppliersQuery = useSuppliers();
   const createSupplier = useCreateSupplier();
@@ -26,17 +27,17 @@ export default function SuppliersPage() {
       .includes(search.toLowerCase()),
   );
 
-  const errorMessage =
-    createSupplier.error instanceof Error
-      ? createSupplier.error.message
-      : suppliersQuery.error instanceof Error
-        ? suppliersQuery.error.message
-        : "";
+  const errorMessage = createSupplier.error instanceof Error
+    ? createSupplier.error.message
+    : suppliersQuery.error instanceof Error
+      ? suppliersQuery.error.message
+      : "";
 
   function handleCreateSupplier(input: CreateSupplierInput) {
     createSupplier.mutate(input, {
       onSuccess: () => {
         setShowForm(false);
+        setSuccessMessage("Supplier was created successfully.");
       },
     });
   }
@@ -51,13 +52,16 @@ export default function SuppliersPage() {
 
         <button
           className="primary-button"
-          onClick={() => setShowForm((current) => !current)}>
+          disabled={createSupplier.isPending}
+          onClick={() => { createSupplier.reset(); setSuccessMessage(""); setShowForm((current) => !current); }}>
           <Plus size={18} />
           Add Supplier
         </button>
       </div>
 
-      {errorMessage && <div className="materials-error">{errorMessage}</div>}
+      {errorMessage && <div className="materials-error" role="alert">{errorMessage}</div>}
+      {successMessage && <div className="materials-success" role="status">{successMessage}</div>}
+      {suppliersQuery.isLoading && <div className="materials-loading">Loading suppliers…</div>}
 
       {showForm && (
         <SupplierForm
@@ -86,7 +90,7 @@ export default function SuppliersPage() {
         </button>
       </div>
 
-      <SuppliersTable suppliers={filteredSuppliers} />
+      <SuppliersTable suppliers={filteredSuppliers} isLoading={suppliersQuery.isLoading} />
 
       <p className="materials-count">
         Showing {filteredSuppliers.length} of {suppliers.length} suppliers

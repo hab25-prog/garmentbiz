@@ -1,7 +1,6 @@
 generator client {
-  provider            = "prisma-client"
-  output              = "../generated/prisma"
-
+  provider = "prisma-client"
+  output   = "../generated/prisma"
 }
 
 datasource db {
@@ -37,6 +36,10 @@ model Business {
   units                    UnitOfMeasure[]
   materials                Material[]
   products                 Product[]
+  productMaterialRequirements ProductMaterialRequirement[]
+  orderMaterialEstimates OrderMaterialEstimate[]
+  orderMaterialEstimateItems OrderMaterialEstimateItem[]
+  orderMaterialEstimateMaterials OrderMaterialEstimateMaterial[]
   purchases                Purchase[]
   stockMovements           StockMovement[]
   costLayers               MaterialCostLayer[]
@@ -45,6 +48,10 @@ model Business {
   productionMaterialUsages ProductionMaterialUsage[]
   expenses                 Expense[]
   productionCostSheets     ProductionCostSheet[]
+  materialCostAllocations  MaterialCostAllocation[]
+  inventoryOperations      InventoryOperation[]
+  inventoryCostAllocations InventoryCostAllocation[]
+  unitConversions          UnitConversion[]
   invoices                 Invoice[]
   payments                 Payment[]
 
@@ -72,9 +79,10 @@ model Membership {
   role       MembershipRole @default(EMPLOYEE)
   isActive   Boolean        @default(true)
 
-  business Business @relation(fields: [businessId], references: [id])
-  user     User     @relation(fields: [userId], references: [id])
-  sessions Session[]
+  business            Business             @relation(fields: [businessId], references: [id])
+  user                User                 @relation(fields: [userId], references: [id])
+  sessions            Session[]
+  inventoryOperations InventoryOperation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -84,11 +92,11 @@ model Membership {
 }
 
 model Session {
-  id                String   @id @default(cuid())
-  membershipId      String
-  tokenHash         String   @unique
-  expiresAt         DateTime
-  revokedAt         DateTime?
+  id                 String    @id @default(cuid())
+  membershipId       String
+  tokenHash          String    @unique
+  expiresAt          DateTime
+  revokedAt          DateTime?
   rotatedToSessionId String?
 
   membership Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
@@ -136,6 +144,10 @@ enum PurchaseStatus {
 
 enum StockMovementType {
   PURCHASE
+  MANUAL_RECEIPT
+  INVENTORY_ISSUE
+  INVENTORY_RETURN
+  INVENTORY_WASTE
   PRODUCTION_ISSUE
   PRODUCTION_RETURN
   PRODUCTION_WASTE
@@ -155,6 +167,18 @@ enum OrderStatus {
   COMPLETED
   DELIVERED
   CANCELLED
+}
+
+enum OrderMaterialEstimateStatus {
+  COMPLETE
+  INCOMPLETE
+}
+
+enum OrderMaterialEstimateLineStatus {
+  COMPLETE
+  INSUFFICIENT_STOCK
+  NO_COST_LAYERS
+  INVENTORY_DISCREPANCY
 }
 
 enum ProductionStatus {
@@ -214,16 +238,17 @@ model Employee {
 }
 
 model Supplier {
-  id          String     @id @default(cuid())
-  businessId  String
-  name        String
-  contactName String?
-  phone       String?
-  email       String?
-  address     String?
-  notes       String?
-  purchases   Purchase[]
-  isActive    Boolean    @default(true)
+  id                  String               @id @default(cuid())
+  businessId          String
+  name                String
+  contactName         String?
+  phone               String?
+  email               String?
+  address             String?
+  notes               String?
+  purchases           Purchase[]
+  inventoryOperations InventoryOperation[]
+  isActive            Boolean              @default(true)
 
   business Business @relation(fields: [businessId], references: [id])
 
@@ -239,8 +264,11 @@ model UnitOfMeasure {
   name       String
   code       String
 
-  business  Business   @relation(fields: [businessId], references: [id])
-  materials Material[]
+  business        Business         @relation(fields: [businessId], references: [id])
+  materials       Material[]
+  conversionsFrom UnitConversion[] @relation("ConversionFrom")
+  conversionsTo   UnitConversion[] @relation("ConversionTo")
+  orderMaterialEstimates OrderMaterialEstimateMaterial[]
 
   createdAt DateTime @default(now())
 
@@ -262,6 +290,9 @@ model Material {
   stockMovements           StockMovement[]
   costLayers               MaterialCostLayer[]
   productionMaterialUsages ProductionMaterialUsage[]
+  inventoryOperations      InventoryOperation[]
+  productRequirements      ProductMaterialRequirement[]
+  orderMaterialEstimates   OrderMaterialEstimateMaterial[]
 
   business Business      @relation(fields: [businessId], references: [id])
   unit     UnitOfMeasure @relation(fields: [unitId], references: [id])
@@ -281,6 +312,8 @@ model Product {
   description String?
   category    String?
   orderItems  OrderItem[]
+  materialRequirements ProductMaterialRequirement[]
+  orderMaterialEstimateItems OrderMaterialEstimateItem[]
   basePrice   Decimal?    @db.Decimal(12, 2)
   isActive    Boolean     @default(true)
 
@@ -291,6 +324,25 @@ model Product {
 
   @@unique([businessId, sku])
   @@index([businessId, name])
+}
+
+model ProductMaterialRequirement {
+  id                String   @id @default(cuid())
+  businessId        String
+  productId         String
+  materialId        String
+  quantityPerUnit   Decimal  @db.Decimal(14, 3)
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  material Material @relation(fields: [materialId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([productId, materialId])
+  @@index([businessId, productId])
+  @@index([businessId, materialId])
 }
 
 model Purchase {
@@ -334,18 +386,22 @@ model PurchaseItem {
 }
 
 model StockMovement {
-  id            String            @id @default(cuid())
-  businessId    String
-  materialId    String
-  movementType  StockMovementType
-  quantity      Decimal           @db.Decimal(14, 3)
-  referenceId   String?
-  referenceType String?
-  notes         String?
-  movementDate  DateTime          @default(now())
+  id                   String            @id @default(cuid())
+  businessId           String
+  materialId           String
+  movementType         StockMovementType
+  quantity             Decimal           @db.Decimal(14, 3)
+  referenceId          String?
+  referenceType        String?
+  notes                String?
+  movementDate         DateTime          @default(now())
+  inventoryOperationId String?           @unique
+  unitCostSnapshot     Decimal?          @db.Decimal(14, 2)
+  reason               String?
 
-  business Business @relation(fields: [businessId], references: [id])
-  material Material @relation(fields: [materialId], references: [id])
+  business           Business            @relation(fields: [businessId], references: [id])
+  material           Material            @relation(fields: [materialId], references: [id])
+  inventoryOperation InventoryOperation? @relation(fields: [inventoryOperationId], references: [id])
 
   createdAt DateTime @default(now())
 
@@ -353,16 +409,23 @@ model StockMovement {
 }
 
 model MaterialCostLayer {
-  id             String          @id @default(cuid())
-  businessId     String
-  materialId     String
+  id                   String                    @id @default(cuid())
+  businessId           String
+  materialId           String
   // purchaseItemId String
-  originalQty    Decimal         @db.Decimal(14, 3)
-  remainingQty   Decimal         @db.Decimal(14, 3)
-  unitCost       Decimal         @db.Decimal(14, 2)
-  status         CostLayerStatus @default(OPEN)
-  purchaseItemId String          @unique
-  purchaseItem   PurchaseItem    @relation(fields: [purchaseItemId], references: [id])
+  originalQty          Decimal                   @db.Decimal(14, 3)
+  remainingQty         Decimal                   @db.Decimal(14, 3)
+  unitCost             Decimal                   @db.Decimal(14, 2)
+  status               CostLayerStatus           @default(OPEN)
+  purchaseItemId       String?                   @unique
+  sourceOperationId    String?                   @unique
+  sourceType           InventoryLayerSource      @default(PURCHASE)
+  receivedAt           DateTime                  @default(now())
+  purchaseItem         PurchaseItem?             @relation(fields: [purchaseItemId], references: [id])
+  sourceOperation      InventoryOperation?       @relation(fields: [sourceOperationId], references: [id])
+  allocations          MaterialCostAllocation[]
+  inventoryAllocations InventoryCostAllocation[]
+  orderEstimateLayers  OrderMaterialEstimateLayer[]
 
   business Business @relation(fields: [businessId], references: [id])
   material Material @relation(fields: [materialId], references: [id])
@@ -370,6 +433,85 @@ model MaterialCostLayer {
   createdAt DateTime @default(now())
 
   @@index([businessId, materialId, status])
+}
+
+enum InventoryLayerSource {
+  PURCHASE
+  MANUAL_RECEIPT
+  ADJUSTMENT_IN
+}
+
+enum InventoryOperationType {
+  MANUAL_RECEIPT
+  ISSUE
+  RETURN
+  WASTE
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+}
+
+model InventoryOperation {
+  id                      String                    @id @default(cuid())
+  businessId              String
+  materialId              String
+  supplierId              String?
+  performedByMembershipId String
+  operationType           InventoryOperationType
+  quantity                Decimal                   @db.Decimal(14, 3)
+  unitCost                Decimal?                  @db.Decimal(14, 2)
+  reason                  String
+  reference               String?
+  operationKey            String
+  reversesOperationId     String?
+  movement                StockMovement?
+  costLayer               MaterialCostLayer?
+  allocations             InventoryCostAllocation[]
+  returnedFrom            InventoryOperation?       @relation("InventoryReturns", fields: [reversesOperationId], references: [id])
+  returns                 InventoryOperation[]      @relation("InventoryReturns")
+  business                Business                  @relation(fields: [businessId], references: [id])
+  material                Material                  @relation(fields: [materialId], references: [id])
+  supplier                Supplier?                 @relation(fields: [supplierId], references: [id])
+  performedBy             Membership                @relation(fields: [performedByMembershipId], references: [id])
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  @@unique([businessId, operationKey])
+  @@index([businessId, materialId, createdAt])
+  @@index([businessId, operationType, createdAt])
+}
+
+model InventoryCostAllocation {
+  id                   String             @id @default(cuid())
+  businessId           String
+  inventoryOperationId String
+  materialCostLayerId  String
+  allocatedQuantity    Decimal            @db.Decimal(14, 3)
+  returnedQuantity     Decimal            @default(0) @db.Decimal(14, 3)
+  unitCostSnapshot     Decimal            @db.Decimal(14, 2)
+  business             Business           @relation(fields: [businessId], references: [id])
+  inventoryOperation   InventoryOperation @relation(fields: [inventoryOperationId], references: [id])
+  materialCostLayer    MaterialCostLayer  @relation(fields: [materialCostLayerId], references: [id])
+  createdAt            DateTime           @default(now())
+
+  @@unique([inventoryOperationId, materialCostLayerId])
+  @@index([businessId, inventoryOperationId])
+  @@index([materialCostLayerId])
+}
+
+model UnitConversion {
+  id         String        @id @default(cuid())
+  businessId String
+  fromUnitId String
+  toUnitId   String
+  factor     Decimal       @db.Decimal(18, 9)
+  business   Business      @relation(fields: [businessId], references: [id])
+  fromUnit   UnitOfMeasure @relation("ConversionFrom", fields: [fromUnitId], references: [id])
+  toUnit     UnitOfMeasure @relation("ConversionTo", fields: [toUnitId], references: [id])
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@unique([businessId, fromUnitId, toUnitId])
+  @@index([businessId])
 }
 
 model CustomerOrder {
@@ -388,6 +530,7 @@ model CustomerOrder {
   customer Customer          @relation(fields: [customerId], references: [id])
   items    OrderItem[]
   batches  ProductionBatch[]
+  materialEstimates OrderMaterialEstimate[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -406,8 +549,10 @@ model OrderItem {
   lineTotal   Decimal @db.Decimal(14, 2)
   description String?
 
-  order   CustomerOrder @relation(fields: [orderId], references: [id])
-  product Product       @relation(fields: [productId], references: [id])
+  order             CustomerOrder     @relation(fields: [orderId], references: [id])
+  product           Product           @relation(fields: [productId], references: [id])
+  productionBatches ProductionBatch[]
+  materialEstimates OrderMaterialEstimateItem[]
 
   createdAt DateTime @default(now())
 
@@ -415,10 +560,105 @@ model OrderItem {
   @@index([productId])
 }
 
+model OrderMaterialEstimate {
+  id                 String                       @id @default(cuid())
+  businessId         String
+  orderId            String
+  status             OrderMaterialEstimateStatus
+  totalMaterialCost  Decimal?                     @db.Decimal(14, 2)
+  estimatedAt        DateTime                     @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  order    CustomerOrder @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  items    OrderMaterialEstimateItem[]
+  materials OrderMaterialEstimateMaterial[]
+
+  @@index([businessId, orderId, estimatedAt])
+}
+
+model OrderMaterialEstimateItem {
+  id                   String   @id @default(cuid())
+  businessId           String
+  estimateId           String
+  orderItemId          String
+  productId            String
+  productNameSnapshot  String
+  orderedQuantity      Int
+  hasBom               Boolean
+
+  business       Business              @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  estimate       OrderMaterialEstimate @relation(fields: [estimateId], references: [id], onDelete: Restrict)
+  orderItem      OrderItem             @relation(fields: [orderItemId], references: [id], onDelete: Restrict)
+  product        Product               @relation(fields: [productId], references: [id], onDelete: Restrict)
+  requirements   OrderMaterialEstimateRequirement[]
+
+  @@unique([estimateId, orderItemId])
+  @@index([businessId, estimateId])
+}
+
+model OrderMaterialEstimateMaterial {
+  id                      String                              @id @default(cuid())
+  businessId              String
+  estimateId              String
+  materialId              String
+  materialNameSnapshot    String
+  baseUnitId              String
+  baseUnitNameSnapshot    String
+  baseUnitCodeSnapshot    String
+  requiredQuantity        Decimal                             @db.Decimal(14, 3)
+  availableQuantity       Decimal                             @db.Decimal(14, 3)
+  fifoAvailableQuantity   Decimal                             @db.Decimal(14, 3)
+  shortageQuantity        Decimal                             @db.Decimal(14, 3)
+  status                  OrderMaterialEstimateLineStatus
+  estimatedCost           Decimal?                            @db.Decimal(14, 2)
+
+  business       Business              @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  estimate       OrderMaterialEstimate @relation(fields: [estimateId], references: [id], onDelete: Restrict)
+  material       Material              @relation(fields: [materialId], references: [id], onDelete: Restrict)
+  baseUnit       UnitOfMeasure         @relation(fields: [baseUnitId], references: [id], onDelete: Restrict)
+  requirements   OrderMaterialEstimateRequirement[]
+  fifoLayers     OrderMaterialEstimateLayer[]
+
+  @@unique([estimateId, materialId])
+  @@index([businessId, estimateId])
+}
+
+model OrderMaterialEstimateRequirement {
+  id                       String                       @id @default(cuid())
+  estimateItemId           String
+  materialEstimateId       String
+  quantityPerProduct       Decimal                      @db.Decimal(14, 3)
+  requiredQuantity         Decimal                      @db.Decimal(14, 3)
+
+  estimateItem     OrderMaterialEstimateItem     @relation(fields: [estimateItemId], references: [id], onDelete: Restrict)
+  materialEstimate OrderMaterialEstimateMaterial @relation(fields: [materialEstimateId], references: [id], onDelete: Restrict)
+
+  @@unique([estimateItemId, materialEstimateId])
+  @@index([materialEstimateId])
+}
+
+model OrderMaterialEstimateLayer {
+  id                       String                       @id @default(cuid())
+  materialEstimateId       String
+  materialCostLayerId      String
+  layerReceivedAtSnapshot  DateTime
+  layerAvailableQuantity   Decimal                      @db.Decimal(14, 3)
+  allocatedQuantity        Decimal                      @db.Decimal(14, 3)
+  unitCostSnapshot         Decimal                      @db.Decimal(14, 2)
+  estimatedCost            Decimal                      @db.Decimal(14, 2)
+
+  materialEstimate  OrderMaterialEstimateMaterial @relation(fields: [materialEstimateId], references: [id], onDelete: Restrict)
+  materialCostLayer MaterialCostLayer             @relation(fields: [materialCostLayerId], references: [id], onDelete: Restrict)
+
+  @@unique([materialEstimateId, materialCostLayerId])
+  @@index([materialEstimateId])
+}
+
 model ProductionBatch {
   id                String           @id @default(cuid())
   businessId        String
   orderId           String
+  orderItemId       String?
   employeeId        String?
   batchNo           String
   status            ProductionStatus @default(PLANNED)
@@ -430,6 +670,7 @@ model ProductionBatch {
 
   business       Business                  @relation(fields: [businessId], references: [id])
   order          CustomerOrder             @relation(fields: [orderId], references: [id])
+  orderItem      OrderItem?                @relation(fields: [orderItemId], references: [id])
   employee       Employee?                 @relation(fields: [employeeId], references: [id])
   materialUsages ProductionMaterialUsage[]
   costSheet      ProductionCostSheet?
@@ -459,10 +700,11 @@ model ProductionMaterialUsage {
 
   notes String?
 
-  business        Business        @relation(fields: [businessId], references: [id])
-  productionBatch ProductionBatch @relation(fields: [productionBatchId], references: [id])
-  material        Material        @relation(fields: [materialId], references: [id])
-  employee        Employee?       @relation(fields: [employeeId], references: [id])
+  business        Business                 @relation(fields: [businessId], references: [id])
+  productionBatch ProductionBatch          @relation(fields: [productionBatchId], references: [id])
+  material        Material                 @relation(fields: [materialId], references: [id])
+  costAllocations MaterialCostAllocation[]
+  employee        Employee?                @relation(fields: [employeeId], references: [id])
 
   recordedAt DateTime @default(now())
 
@@ -471,12 +713,34 @@ model ProductionMaterialUsage {
   @@index([employeeId])
 }
 
+model MaterialCostAllocation {
+  id                        String @id @default(cuid())
+  businessId                String
+  productionMaterialUsageId String
+  materialCostLayerId       String
+
+  allocatedQuantity Decimal @db.Decimal(14, 3)
+  returnedQuantity  Decimal @default(0) @db.Decimal(14, 3)
+  unitCostSnapshot  Decimal @db.Decimal(14, 2)
+
+  business                Business                @relation(fields: [businessId], references: [id])
+  productionMaterialUsage ProductionMaterialUsage @relation(fields: [productionMaterialUsageId], references: [id])
+  materialCostLayer       MaterialCostLayer       @relation(fields: [materialCostLayerId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@unique([productionMaterialUsageId, materialCostLayerId])
+  @@index([businessId, productionMaterialUsageId])
+  @@index([materialCostLayerId])
+}
+
 model ProductionCostSheet {
   id                String @id @default(cuid())
   businessId        String
   productionBatchId String @unique
 
   materialCost    Decimal @default(0) @db.Decimal(14, 2)
+  laborCost       Decimal @default(0) @db.Decimal(14, 2)
   otherDirectCost Decimal @default(0) @db.Decimal(14, 2)
   totalDirectCost Decimal @default(0) @db.Decimal(14, 2)
 

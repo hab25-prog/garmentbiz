@@ -1,0 +1,11 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ordersApi } from "../api/orders.api";
+import type { CreateOrderInput, OrderStatus } from "../types/orders.types";
+export const orderKeys = { all: ["orders"] as const, detail: (id: string) => ["orders", id] as const };
+export function useOrders() { return useQuery({ queryKey: orderKeys.all, queryFn: ordersApi.getAll }); }
+export function useOrder(id: string | null) { return useQuery({ queryKey: orderKeys.detail(id ?? ""), queryFn: () => ordersApi.getById(id!), enabled: Boolean(id) }); }
+export function useCreateOrder() { const qc = useQueryClient(); return useMutation({ mutationFn: (input: CreateOrderInput) => ordersApi.create(input), onSuccess: () => qc.invalidateQueries({ queryKey: orderKeys.all }) }); }
+export function useUpdateOrderStatus() { const qc = useQueryClient(); return useMutation({ mutationFn: ({ id, status }: { id: string; status: OrderStatus }) => ordersApi.updateStatus(id, status), onSuccess: (order) => Promise.all([qc.invalidateQueries({ queryKey: orderKeys.all }), qc.invalidateQueries({ queryKey: orderKeys.detail(order.id) })]) }); }
+export function useOrderMaterialEstimates(orderId: string | null) { return useQuery({ queryKey: ["orders", orderId ?? "", "material-estimates"], queryFn: () => ordersApi.getMaterialEstimates(orderId!), enabled: Boolean(orderId) }); }
+export function useOrderMaterialEstimate(orderId: string | null, estimateId: string | null) { return useQuery({ queryKey: ["orders", orderId ?? "", "material-estimate", estimateId ?? ""], queryFn: () => ordersApi.getMaterialEstimate(orderId!, estimateId!), enabled: Boolean(orderId && estimateId) }); }
+export function useCreateOrderMaterialEstimate() { const qc = useQueryClient(); return useMutation({ mutationFn: ordersApi.createMaterialEstimate, onSuccess: (estimate) => Promise.all([qc.invalidateQueries({ queryKey: ["orders", estimate.orderId, "material-estimates"] }), qc.invalidateQueries({ queryKey: ["orders", estimate.orderId, "material-estimate"] })]) }); }

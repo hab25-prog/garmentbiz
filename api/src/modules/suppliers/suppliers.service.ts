@@ -20,10 +20,21 @@ export async function createSupplier(input: CreateSupplierInput) {
     throw new Error("Business not found");
   }
 
+  const existing = await prisma.supplier.findFirst({
+    where: {
+      businessId: input.businessId,
+      name: { equals: input.name.trim(), mode: "insensitive" },
+    },
+    select: { id: true },
+  });
+  if (existing) {
+    throw new Error("A supplier with this name already exists for this business");
+  }
+
   return prisma.supplier.create({
     data: {
       businessId: input.businessId,
-      name: input.name,
+      name: input.name.trim(),
       ...(input.contactName !== undefined
         ? { contactName: input.contactName }
         : {}),

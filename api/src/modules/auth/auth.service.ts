@@ -2,6 +2,7 @@ import argon2 from "argon2";
 import { randomBytes } from "node:crypto";
 import { Prisma } from "../../../generated/prisma/client.js";
 import { prisma } from "../../database/prisma.js";
+import { ensureDefaultUnits } from "../units/units.service.js";
 import {
   assertJwtConfiguration,
   createAccessToken,
@@ -105,6 +106,7 @@ export async function register(input: RegisterInput): Promise<AuthTokens> {
         data: { name: input.businessName },
         select: { id: true },
       });
+      await ensureDefaultUnits(transaction, business.id);
       const membership = await transaction.membership.create({
         data: { userId: user.id, businessId: business.id, role: "OWNER" },
         select: { id: true },

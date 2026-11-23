@@ -71,6 +71,19 @@ test("successful registration creates expected records transactionally and issue
   const transaction = {
     user: { create: async () => { records.push("user"); return { id: "user-1" }; } },
     business: { create: async () => { records.push("business"); return { id: "business-1" }; } },
+    unitOfMeasure: {
+      findMany: async () => [],
+      createMany: async (args: { data: Array<{ businessId: string; name: string; code: string }>; skipDuplicates: boolean }) => {
+        records.push("units");
+        assert.equal(args.skipDuplicates, true);
+        assert.ok(args.data.every((unit) => unit.businessId === "business-1"));
+        assert.deepEqual(args.data.map(({ name, code }) => [name, code]), [
+          ["Meter", "m"], ["Centimeter", "cm"], ["Kilogram", "kg"], ["Gram", "g"],
+          ["Piece", "pcs"], ["Roll", "roll"], ["Cone", "cone"], ["Spool", "spool"], ["Liter", "L"],
+        ]);
+        return { count: args.data.length };
+      },
+    },
     membership: { create: async () => { records.push("membership"); return { id: "membership-1" }; } },
     session: { create: async (args: { data: { tokenHash: string; membershipId: string } }) => {
       records.push(`session:${args.data.membershipId}`);
@@ -87,7 +100,7 @@ test("successful registration creates expected records transactionally and issue
     password: "valid test password",
     businessName: "New Workshop",
   });
-  assert.deepEqual(records, ["user", "business", "membership", "session:membership-1"]);
+  assert.deepEqual(records, ["user", "business", "units", "membership", "session:membership-1"]);
   assert.equal((await verifyAccessToken(result.accessToken)).sub, "user-1");
   assert.equal(result.businessId, "business-1");
   assert.equal(result.refreshToken.length, 43);

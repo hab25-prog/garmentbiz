@@ -15,7 +15,8 @@
   --muted: #7b8496;
   --border: #e8ebf1;
   display: flex;
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   background: var(--bg);
   color: var(--text);
   font-family:
@@ -25,7 +26,7 @@
     "Segoe UI",
     sans-serif;
   width: 100%;
-  overflow-x: clip;
+  overflow: hidden;
 }
 
 .app-shell.dark {
@@ -45,9 +46,12 @@
   display: flex;
   flex-direction: column;
   transition: width 0.2s;
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   min-width: 0;
-  position: relative;
+  position: sticky;
+  top: 0;
+  overflow: hidden;
   z-index: 30;
 }
 
@@ -93,7 +97,18 @@
 .sidebar-nav {
   padding: 17px 12px;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar-nav::-webkit-scrollbar,
+.main-area::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .nav-heading {
@@ -177,6 +192,12 @@
   flex: 1;
   min-width: 0;
   width: 0;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .topbar {
@@ -560,7 +581,8 @@
     width: 76px;
     position: fixed;
     inset: 0 auto 0 0;
-    min-height: 100dvh;
+    height: 100dvh;
+    min-height: 0;
     transition: width 0.2s ease, transform 0.2s ease;
   }
 
