@@ -297,6 +297,16 @@
   font-size: 12px;
 }
 
+.purchase-validation-error {
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #fecaca;
+  border-radius: 0.5rem;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.9rem;
+}
+
 /* Responsive layout */
 
 @media (max-width: 850px) {

@@ -1,3 +1,4 @@
+import { LocalizedText, translateCurrent } from "../../../app/providers/LanguageProvider";
 import { useState, type FormEvent } from "react";
 import type { CreateSupplierInput } from "../types/supplier.types";
 
@@ -49,27 +50,24 @@ export default function SupplierForm({
     <form className="supplier-form" onSubmit={handleSubmit}>
       <div className="supplier-form-grid">
         <label>
-          Supplier Name *
-          <input
+          <LocalizedText text={"\n          Supplier Name *\n          "} /><input
             required
             value={form.name}
             onChange={(event) => updateField("name", event.target.value)}
-            placeholder="Enter supplier name"
+            placeholder={translateCurrent("Enter supplier name")}
           />
         </label>
 
         <label>
-          Contact Person
-          <input
+          <LocalizedText text={"\n          Contact Person\n          "} /><input
             value={form.contactName}
             onChange={(event) => updateField("contactName", event.target.value)}
-            placeholder="Enter contact person"
+            placeholder={translateCurrent("Enter contact person")}
           />
         </label>
 
         <label>
-          Phone Number
-          <input
+          <LocalizedText text={"\n          Phone Number\n          "} /><input
             type="tel"
             value={form.phone}
             onChange={(event) => updateField("phone", event.target.value)}
@@ -78,45 +76,41 @@ export default function SupplierForm({
         </label>
 
         <label>
-          Email Address
-          <input
+          <LocalizedText text={"\n          Email Address\n          "} /><input
             type="email"
             value={form.email}
             onChange={(event) => updateField("email", event.target.value)}
-            placeholder="supplier@example.com"
+            placeholder={translateCurrent("supplier@example.com")}
           />
         </label>
 
         <label className="supplier-full-width">
-          Address
-          <input
+          <LocalizedText text={"\n          Address\n          "} /><input
             value={form.address}
             onChange={(event) => updateField("address", event.target.value)}
-            placeholder="Supplier location"
+            placeholder={translateCurrent("Supplier location")}
           />
         </label>
 
         <label className="supplier-full-width">
-          Notes
-          <textarea
+          <LocalizedText text={"\n          Notes\n          "} /><textarea
             rows={3}
             value={form.notes}
             onChange={(event) => updateField("notes", event.target.value)}
-            placeholder="Additional information about this supplier"
+            placeholder={translateCurrent("Additional information about this supplier")}
           />
         </label>
       </div>
 
       <div className="supplier-form-actions">
         <button type="button" className="secondary-button" onClick={onCancel}>
-          Cancel
-        </button>
+          <LocalizedText text={"\n          Cancel\n        "} /></button>
 
         <button
           type="submit"
           className="primary-button"
           disabled={isSubmitting || !form.name.trim()}>
-          {isSubmitting ? "Saving..." : "Save Supplier"}
+          {translateCurrent(isSubmitting ? "Saving..." : "Save Supplier")}
         </button>
       </div>
     </form>

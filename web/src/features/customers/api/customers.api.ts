@@ -1,6 +1,6 @@
 import { apiClient } from "../../../lib/api-client";
 import { fetchCsrfToken } from "../../auth/api/auth.api";
-import type { CreateCustomerInput, Customer } from "../types/customer.types";
+import type { CreateCustomerInput, Customer, CustomerReceivablesResponse } from "../types/customer.types";
 
 export const customersApi = {
   getAll(): Promise<Customer[]> {
@@ -16,5 +16,9 @@ export const customersApi = {
         "X-CSRF-Token": token,
       },
     });
+  },
+
+  getReceivables(customerId: string): Promise<CustomerReceivablesResponse> {
+    return apiClient.get<CustomerReceivablesResponse>(`/api/customers/${encodeURIComponent(customerId)}/receivables`);
   },
 };

@@ -1,3 +1,4 @@
+import { LocalizedText, translateCurrent } from "../../../app/providers/LanguageProvider";
 import { useState, type FormEvent } from "react";
 import type { CreateCustomerInput } from "../types/customer.types";
 
@@ -39,25 +40,24 @@ export default function CustomerForm({
     <form className="customer-form" onSubmit={handleSubmit}>
       <div className="customer-form-heading">
         <div>
-          <h2>New customer</h2>
-          <p>Add contact information for a customer.</p>
+          <h2><LocalizedText text={"New customer"} /></h2>
+          <p><LocalizedText text={"Add contact information for a customer."} /></p>
         </div>
       </div>
 
       <div className="customer-form-grid">
         <label>
-          Customer name <span aria-hidden="true">*</span>
+          <LocalizedText text={"\n          Customer name "} /><span aria-hidden="true">*</span>
           <input
             autoFocus
             required
             value={form.name}
             onChange={(event) => updateField("name", event.target.value)}
-            placeholder="Enter customer name"
+            placeholder={translateCurrent("Enter customer name")}
           />
         </label>
         <label>
-          Phone number
-          <input
+          <LocalizedText text={"\n          Phone number\n          "} /><input
             type="tel"
             value={form.phone}
             onChange={(event) => updateField("phone", event.target.value)}
@@ -65,29 +65,26 @@ export default function CustomerForm({
           />
         </label>
         <label>
-          Email address
-          <input
+          <LocalizedText text={"\n          Email address\n          "} /><input
             type="email"
             value={form.email}
             onChange={(event) => updateField("email", event.target.value)}
-            placeholder="customer@example.com"
+            placeholder={translateCurrent("customer@example.com")}
           />
         </label>
         <label>
-          Address
-          <input
+          <LocalizedText text={"\n          Address\n          "} /><input
             value={form.address}
             onChange={(event) => updateField("address", event.target.value)}
-            placeholder="Customer location"
+            placeholder={translateCurrent("Customer location")}
           />
         </label>
         <label className="customer-full-width">
-          Notes
-          <textarea
+          <LocalizedText text={"\n          Notes\n          "} /><textarea
             rows={3}
             value={form.notes}
             onChange={(event) => updateField("notes", event.target.value)}
-            placeholder="Additional customer information"
+            placeholder={translateCurrent("Additional customer information")}
           />
         </label>
       </div>
@@ -98,13 +95,12 @@ export default function CustomerForm({
           className="customer-secondary-button"
           onClick={onCancel}
           disabled={isSubmitting}>
-          Cancel
-        </button>
+          <LocalizedText text={"\n          Cancel\n        "} /></button>
         <button
           type="submit"
           className="primary-button"
           disabled={isSubmitting || !form.name.trim()}>
-          {isSubmitting ? "Saving..." : "Save customer"}
+          {translateCurrent(isSubmitting ? "Saving..." : "Save customer")}
         </button>
       </div>
     </form>

@@ -1,3 +1,4 @@
+import { LocalizedText, translateCurrent } from "../../../app/providers/LanguageProvider";
 import { useState, type FormEvent } from "react";
 import type { CreateProductInput } from "../types/product.types";
 
@@ -43,39 +44,35 @@ export default function ProductForm({ onSubmit, isSubmitting, onCancel }: Produc
     <form className="product-form" onSubmit={handleSubmit}>
       <div className="product-form-heading">
         <div>
-          <h2>Add catalog product</h2>
-          <p>Enter the product details and base selling price.</p>
+          <h2><LocalizedText text={"Add catalog product"} /></h2>
+          <p><LocalizedText text={"Enter the product details and base selling price."} /></p>
         </div>
       </div>
       <div className="product-form-grid">
         <label>
-          Product name <span aria-hidden="true">*</span>
-          <input autoFocus required value={form.name} onChange={(event) => updateField("name", event.target.value)} placeholder="e.g. Cotton T-shirt" />
+          <LocalizedText text={"\n          Product name "} /><span aria-hidden="true">*</span>
+          <input autoFocus required value={form.name} onChange={(event) => updateField("name", event.target.value)} placeholder={translateCurrent("e.g. Cotton T-shirt")} />
         </label>
         <label>
-          SKU
-          <input value={form.sku} onChange={(event) => updateField("sku", event.target.value)} placeholder="e.g. TSH-COT-001" />
+          <LocalizedText text={"\n          SKU\n          "} /><input value={form.sku} onChange={(event) => updateField("sku", event.target.value)} placeholder={translateCurrent("e.g. TSH-COT-001")} />
         </label>
         <label>
-          Category
-          <input value={form.category} onChange={(event) => updateField("category", event.target.value)} placeholder="e.g. T-shirts, Uniforms" />
+          <LocalizedText text={"\n          Category\n          "} /><input value={form.category} onChange={(event) => updateField("category", event.target.value)} placeholder={translateCurrent("e.g. T-shirts, Uniforms")} />
         </label>
         <label>
-          Base selling price (ETB)
-          <div className="product-price-input">
-            <span>ETB</span>
+          <LocalizedText text={"\n          Base selling price (ETB)\n          "} /><div className="product-price-input">
+            <span><LocalizedText text={"ETB"} /></span>
             <input type="number" min="0" max="9999999999.99" step="0.01" inputMode="decimal" value={form.basePrice} onChange={(event) => updateField("basePrice", event.target.value)} placeholder="0.00" aria-describedby={priceError ? "product-price-error" : undefined} />
           </div>
           {priceError && <small id="product-price-error" className="product-field-error">{priceError}</small>}
         </label>
         <label className="product-full-width">
-          Description
-          <textarea rows={3} value={form.description} onChange={(event) => updateField("description", event.target.value)} placeholder="Optional details about this garment" />
+          <LocalizedText text={"\n          Description\n          "} /><textarea rows={3} value={form.description} onChange={(event) => updateField("description", event.target.value)} placeholder={translateCurrent("Optional details about this garment")} />
         </label>
       </div>
       <div className="product-form-actions">
-        <button type="button" className="product-secondary-button" onClick={onCancel} disabled={isSubmitting}>Cancel</button>
-        <button type="submit" className="primary-button" disabled={isSubmitting || !form.name.trim()}>{isSubmitting ? "Saving..." : "Save product"}</button>
+        <button type="button" className="product-secondary-button" onClick={onCancel} disabled={isSubmitting}><LocalizedText text={"Cancel"} /></button>
+        <button type="submit" className="primary-button" disabled={isSubmitting || !form.name.trim()}>{translateCurrent(isSubmitting ? "Saving..." : "Save product")}</button>
       </div>
     </form>
   );

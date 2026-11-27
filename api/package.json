@@ -8,7 +8,9 @@
     "build": "tsc",
     "start": "node dist/src/server.js",
     "seed": "tsx prisma/seed.ts",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:integration": "env -u NODE_OPTIONS node --import tsx tests/integration/run-postgres-tests.ts",
+    "migrate:test-db": "env -u NODE_OPTIONS node --import tsx scripts/migrate-test-database.ts"
   },
   "keywords": [],
   "author": "",
@@ -29,7 +31,8 @@
     "dotenv": "^18.0.10",
     "express": "^5.3.0",
     "express-rate-limit": "^8.7.4",
-    "jose": "^6.2.17"
+    "jose": "^6.2.17",
+    "nodemailer": "^10.6.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

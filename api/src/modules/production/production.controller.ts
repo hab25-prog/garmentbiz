@@ -1,5 +1,8 @@
 import type { Request, Response } from "express";
+import { Prisma } from "../../../generated/prisma/client.js";
 import { assertRequestedBusiness } from "../../middleware/auth.middleware.js";
+import { restrictNestedEmployeeDetails, redactFinancialFields } from "../../authorization/financial-fields.js";
+import { roleHasPermission } from "../../authorization/permissions.js";
 import * as service from "./production.service.js";
 const bad = [
   "Planned quantity must be a positive whole number",
@@ -7,10 +10,12 @@ const bad = [
   "Order must be confirmed before production",
   "A valid order item is required",
   "Planned quantity exceeds remaining ordered quantity",
+  "An IN_PRODUCTION order must retain at least one active production batch",
   "Employee not found for this business",
   "Start date must be a valid date",
   "Invalid production status",
   "Completed quantity cannot exceed planned quantity",
+  "Completed quantity must equal planned quantity before completing this batch",
   "Material usage must be reconciled before completing production",
   "Production batch not found or not active",
   "Material not found for this business",
@@ -36,20 +41,30 @@ function business(req: Request, res: Response) {
     req.body?.businessId ?? req.query.businessId,
   );
 }
+function includeEmployeeDetails(req: Request) {
+  return req.businessPrincipal?.role === "OWNER" || req.businessPrincipal?.role === "ADMIN";
+}
+
+export function sanitizeProductionResponse(req: Request, data: unknown) {
+  const safeFinancials = roleHasPermission(req.businessPrincipal?.role, "production.materialCosts.read")
+    ? data
+    : redactFinancialFields(data);
+  return includeEmployeeDetails(req)
+    ? safeFinancials
+    : restrictNestedEmployeeDetails(safeFinancials);
+}
 function error(res: Response, e: unknown, fallback: string) {
   const message = e instanceof Error ? e.message : fallback;
+  if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2034") {
+    return res.status(409).json({ success: false, message: "Order or production changed concurrently. Please reload and try again." });
+  }
+  const validation = bad.some((entry) => message === entry || message.startsWith(entry)) || message.startsWith("Cannot change production status");
   return res
-    .status(
-      bad.includes(message) ||
-        message.startsWith("Cannot change production status")
-        ? 400
-        : 500,
-    )
+    .status(validation ? 400 : 500)
     .json({
       success: false,
       message:
-        bad.includes(message) ||
-        message.startsWith("Cannot change production status")
+        validation
           ? message
           : fallback,
     });
@@ -60,7 +75,7 @@ export async function list(req: Request, res: Response) {
     if (!b) return;
     res.json({
       success: true,
-      data: await service.getBatches(b, {
+      data: sanitizeProductionResponse(req, await service.getBatches(b, {
         ...(typeof req.query.orderId === "string"
           ? { orderId: req.query.orderId }
           : {}),
@@ -69,7 +84,7 @@ export async function list(req: Request, res: Response) {
           : {}),
         ...(typeof req.query.from === "string" ? { from: req.query.from } : {}),
         ...(typeof req.query.to === "string" ? { to: req.query.to } : {}),
-      }),
+      }, includeEmployeeDetails(req))),
     });
   } catch (e) {
     return error(res, e, "Failed to retrieve production batches");
@@ -96,8 +111,8 @@ export async function create(req: Request, res: Response) {
       ...(typeof x.employeeId === "string" ? { employeeId: x.employeeId } : {}),
       ...(typeof x.startDate === "string" ? { startDate: x.startDate } : {}),
       ...(typeof x.notes === "string" ? { notes: x.notes } : {}),
-    });
-    return res.status(201).json({ success: true, data });
+    }, includeEmployeeDetails(req));
+    return res.status(201).json({ success: true, data: sanitizeProductionResponse(req, data) });
   } catch (e) {
     return error(res, e, "Failed to create production batch");
   }
@@ -109,12 +124,13 @@ export async function detail(req: Request, res: Response) {
     const x = await service.getBatch(
       b,
       typeof req.params.id === "string" ? req.params.id : "",
+      includeEmployeeDetails(req),
     );
     if (!x)
       return res
         .status(404)
         .json({ success: false, message: "Production batch not found" });
-    return res.json({ success: true, data: x });
+    return res.json({ success: true, data: sanitizeProductionResponse(req, x) });
   } catch (e) {
     return error(res, e, "Failed to retrieve production batch");
   }
@@ -141,12 +157,13 @@ export async function update(req: Request, res: Response) {
           ? { plannedQuantity: x.plannedQuantity }
           : {}),
       },
+      includeEmployeeDetails(req),
     );
     if (!data)
       return res
         .status(404)
         .json({ success: false, message: "Production batch not found" });
-    return res.json({ success: true, data });
+    return res.json({ success: true, data: sanitizeProductionResponse(req, data) });
   } catch (e) {
     return error(res, e, "Failed to update production batch");
   }
@@ -168,12 +185,13 @@ export async function status(req: Request, res: Response) {
       typeof req.params.id === "string" ? req.params.id : "",
       x.status,
       x.completedQuantity,
+      includeEmployeeDetails(req),
     );
     if (!data)
       return res
         .status(404)
         .json({ success: false, message: "Production batch not found" });
-    return res.json({ success: true, data });
+    return res.json({ success: true, data: sanitizeProductionResponse(req, data) });
   } catch (e) {
     return error(res, e, "Failed to update production status");
   }
@@ -202,7 +220,7 @@ export async function issue(req: Request, res: Response) {
         ...(typeof x.notes === "string" ? { notes: x.notes } : {}),
       },
     );
-    return res.status(201).json({ success: true, data });
+    return res.status(201).json({ success: true, data: sanitizeProductionResponse(req, data) });
   } catch (e) {
     return error(res, e, "Failed to issue material");
   }
@@ -213,10 +231,10 @@ export async function usage(req: Request, res: Response) {
     if (!b) return;
     return res.json({
       success: true,
-      data: await service.getUsage(
+      data: sanitizeProductionResponse(req, await service.getUsage(
         b,
         typeof req.params.id === "string" ? req.params.id : "",
-      ),
+      )),
     });
   } catch (e) {
     return error(res, e, "Failed to retrieve material usage");
@@ -241,7 +259,7 @@ export async function reconcile(req: Request, res: Response) {
       typeof req.params.usageId === "string" ? req.params.usageId : "",
       x,
     );
-    return res.json({ success: true, data });
+    return res.json({ success: true, data: sanitizeProductionResponse(req, data) });
   } catch (e) {
     return error(res, e, "Failed to update material usage");
   }

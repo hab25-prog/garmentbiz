@@ -7,10 +7,13 @@ export type MembershipRole =
   | "PRODUCTION_MANAGER"
   | "EMPLOYEE";
 
+export type UserLanguage = "en" | "am";
+
 export interface AuthenticatedUser {
   id: string;
   fullName: string;
   email: string;
+  language: UserLanguage;
 }
 
 export interface BusinessMembership {
@@ -35,6 +38,17 @@ export interface RegisterInput {
   email: string;
   password: string;
   businessName: string;
+  language?: UserLanguage;
+}
+
+export interface RegistrationAcceptedResponse {
+  success: true;
+  message: string;
+}
+
+export interface EmailVerificationResponse {
+  success: true;
+  message: string;
 }
 
 export interface LoginInput {

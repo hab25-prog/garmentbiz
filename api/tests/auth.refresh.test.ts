@@ -36,7 +36,7 @@ const validSession = (tokenHash: string) => ({
     userId: "user-1",
     businessId: "business-1",
     isActive: true,
-    user: { id: "user-1", isActive: true },
+    user: { id: "user-1", isActive: true, emailVerifiedAt: new Date() },
     business: { id: "business-1", isActive: true },
   },
 });
@@ -101,6 +101,22 @@ test("revoked refresh tokens cannot be used again", async (t) => {
   })) as never);
   t.after(restore);
   await assert.rejects(refresh(oldToken), (error: unknown) => error instanceof AuthError && error.code === "REFRESH_INVALID");
+});
+
+test("unverified users cannot refresh an existing session", async (t) => {
+  withJwtSecret(t);
+  const token = createOpaqueToken();
+  let revoked = false;
+  const restoreLookup = stubMethod(prisma.session, "findUnique", (async () => ({
+    ...validSession(hashToken(token)), membership: {
+      ...validSession(hashToken(token)).membership,
+      user: { id: "user-1", isActive: true, emailVerifiedAt: null },
+    },
+  })) as never);
+  const restoreUpdate = stubMethod(prisma.session, "updateMany", (async () => { revoked = true; return { count: 1 }; }) as never);
+  t.after(restoreLookup); t.after(restoreUpdate);
+  await assert.rejects(refresh(token), (error: unknown) => error instanceof AuthError && error.code === "REFRESH_INVALID");
+  assert.equal(revoked, true);
 });
 
 test("logout revokes the cookie refresh token and clears the cookie", async (t) => {

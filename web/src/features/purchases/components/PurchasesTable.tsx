@@ -1,4 +1,6 @@
+import { LocalizedText, useLanguage, translateCurrent } from "../../../app/providers/LanguageProvider";
 import type { Purchase } from "../types/purchase.types";
+import { formatAppDate } from "../../../app/utils/format-app-date";
 
 interface PurchasesTableProps {
   purchases: Purchase[];
@@ -13,6 +15,7 @@ export default function PurchasesTable({
   receivingPurchaseId,
   onReceive,
 }: PurchasesTableProps) {
+  const { t } = useLanguage();
   const formatMoney = (amount: string) =>
     new Intl.NumberFormat("en-ET", {
       style: "currency",
@@ -25,13 +28,13 @@ export default function PurchasesTable({
       <table className="purchases-table">
         <thead>
           <tr>
-            <th>Purchase No.</th>
-            <th>Supplier</th>
-            <th>Date</th>
-            <th>Items</th>
-            <th>Subtotal</th>
-            <th>Status</th>
-            <th>Action</th>
+            <th><LocalizedText text={"Purchase No."} /></th>
+            <th><LocalizedText text={"Supplier"} /></th>
+            <th><LocalizedText text={"Date"} /></th>
+            <th><LocalizedText text={"Items"} /></th>
+            <th><LocalizedText text={"Subtotal"} /></th>
+            <th><LocalizedText text={"Status"} /></th>
+            <th><LocalizedText text={"Action"} /></th>
           </tr>
         </thead>
 
@@ -39,8 +42,7 @@ export default function PurchasesTable({
           {purchases.length === 0 ? (
             <tr>
               <td colSpan={7} className="empty-purchases">
-                No purchases found.
-              </td>
+                <LocalizedText text={"\n                No purchases found.\n              "} /></td>
             </tr>
           ) : (
             purchases.map((purchase) => (
@@ -51,7 +53,7 @@ export default function PurchasesTable({
 
                 <td>{purchase.supplier.name}</td>
 
-                <td>{new Date(purchase.purchaseDate).toLocaleDateString()}</td>
+                <td>{formatAppDate(purchase.purchaseDate, { dateStyle: "medium" })}</td>
 
                 <td>{purchase.items.length}</td>
 
@@ -60,7 +62,7 @@ export default function PurchasesTable({
                 <td>
                   <span
                     className={`purchase-status purchase-status-${purchase.status.toLowerCase()}`}>
-                    {purchase.status}
+                    {translateCurrent(t(purchase.status))}
                   </span>
                 </td>
 
@@ -71,16 +73,16 @@ export default function PurchasesTable({
                       disabled={isReceiving}
                       onClick={() => {
                         const confirmed = window.confirm(
-                          `Receive purchase ${purchase.purchaseNo}? This will add its quantities to inventory.`,
+                          t("Receive purchase {purchaseNo}? This will add its quantities to inventory.", { purchaseNo: purchase.purchaseNo }),
                         );
 
                         if (confirmed) {
                           onReceive(purchase.id);
                         }
                       }}>
-                      {isReceiving && receivingPurchaseId === purchase.id
+                      {translateCurrent(isReceiving && receivingPurchaseId === purchase.id
                         ? "Receiving..."
-                        : "Receive"}
+                        : "Receive")}
                     </button>
                   ) : (
                     <span className="purchase-no-action">—</span>

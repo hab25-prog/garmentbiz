@@ -1,4 +1,7 @@
 import type { Request, Response } from "express";
+import { roleHasPermission } from "../../authorization/permissions.js";
+import { restrictNestedEmployeeDetails, redactFinancialFields } from "../../authorization/financial-fields.js";
+import { Prisma } from "../../../generated/prisma/client.js";
 import { assertRequestedBusiness } from "../../middleware/auth.middleware.js";
 import {
   createOrder,
@@ -11,6 +14,7 @@ import {
   getOrderMaterialEstimate,
   getOrderMaterialEstimates,
 } from "./order-material-estimates.service.js";
+import { createOrderPricingCalculation, getOrderPricing } from "./order-pricing.service.js";
 
 function orderEstimateBusiness(req: Request, res: Response) {
   return assertRequestedBusiness(req, res, req.body?.businessId ?? req.query.businessId);
@@ -30,6 +34,64 @@ function estimateError(res: Response, error: unknown) {
 
 function validPathId(value: unknown): value is string {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function safeOrderData(req: Request, data: unknown) {
+  const safeFinancials = roleHasPermission(req.businessPrincipal?.role, "dashboard.financial.read")
+    ? data
+    : redactFinancialFields(data);
+  return req.businessPrincipal?.role === "OWNER" || req.businessPrincipal?.role === "ADMIN"
+    ? safeFinancials
+    : restrictNestedEmployeeDetails(safeFinancials);
+}
+
+function pricingError(res: Response, error: unknown) {
+  const message = error instanceof Error ? error.message : "Failed to process order pricing";
+  if (message === "A material estimate is required before pricing can be calculated" ||
+      message.startsWith("The latest material estimate is incomplete")) {
+    return res.status(409).json({ success: false, message });
+  }
+  if (message.startsWith("Markup must") || message === "Order quantity must be greater than zero" || message.startsWith("Pricing result exceeds")) {
+    return res.status(400).json({ success: false, message });
+  }
+  console.error("Order pricing error:", error);
+  return res.status(500).json({ success: false, message: "Failed to process order pricing" });
+}
+
+export async function getOrderPricingController(req: Request, res: Response) {
+  try {
+    const businessId = assertRequestedBusiness(req, res, undefined);
+    if (!businessId) return;
+    if (!validPathId(req.params.id)) return res.status(400).json({ success: false, message: "Invalid order ID" });
+    const pricing = await getOrderPricing(businessId, req.params.id);
+    if (!pricing) return res.status(404).json({ success: false, message: "Order not found" });
+    return res.status(200).json({ success: true, data: pricing });
+  } catch (error) {
+    return pricingError(res, error);
+  }
+}
+
+export async function createOrderPricingController(req: Request, res: Response) {
+  try {
+    const businessId = assertRequestedBusiness(req, res, undefined);
+    if (!businessId) return;
+    if (!roleHasPermission(req.businessPrincipal?.role, "orders.pricing.manage")) {
+      return res.status(403).json({ success: false, message: "Only the business owner can calculate or change order pricing" });
+    }
+    if (!validPathId(req.params.id)) return res.status(400).json({ success: false, message: "Invalid order ID" });
+    if (req.body?.markupPercent !== undefined && typeof req.body.markupPercent !== "string") {
+      return res.status(400).json({ success: false, message: "Markup must be supplied as a decimal percentage string" });
+    }
+    const calculation = await createOrderPricingCalculation(
+      businessId,
+      req.params.id,
+      req.body?.markupPercent,
+    );
+    if (!calculation) return res.status(404).json({ success: false, message: "Order not found" });
+    return res.status(201).json({ success: true, message: "Minimum selling price calculated", data: calculation });
+  } catch (error) {
+    return pricingError(res, error);
+  }
 }
 
 export async function getOrderMaterialEstimatesController(req: Request, res: Response) {
@@ -176,6 +238,7 @@ export async function createOrderController(req: Request, res: Response) {
       ...(orderDate !== undefined ? { orderDate } : {}),
       ...(dueDate !== undefined ? { dueDate } : {}),
       ...(notes !== undefined ? { notes: notes.trim() } : {}),
+      allowCustomUnitPrice: req.businessPrincipal?.role !== "MANAGER",
       items: items.map((item) => ({
         productId: item.productId.trim(),
         quantity: item.quantity,
@@ -189,10 +252,14 @@ export async function createOrderController(req: Request, res: Response) {
     return res.status(201).json({
       success: true,
       message: "Order created successfully",
-      data: order,
+      data: safeOrderData(req, order),
     });
   } catch (error) {
     console.error("Create order error:", error);
+
+    if (error instanceof Error && error.message === "Managers cannot change order pricing") {
+      return res.status(403).json({ success: false, message: error.message });
+    }
 
     const clientErrors = [
       "An order must contain at least one item",
@@ -244,7 +311,7 @@ export async function getOrdersController(req: Request, res: Response) {
 
     return res.status(200).json({
       success: true,
-      data: orders,
+      data: safeOrderData(req, orders),
     });
   } catch (error) {
     console.error("Get orders error:", error);
@@ -280,7 +347,7 @@ export async function getOrderByIdController(req: Request, res: Response) {
 
     return res.status(200).json({
       success: true,
-      data: order,
+      data: safeOrderData(req, order),
     });
   } catch (error) {
     console.error("Get order error:", error);
@@ -326,7 +393,7 @@ export async function updateOrderStatusController(req: Request, res: Response) {
     return res.status(200).json({
       success: true,
       message: "Order status updated successfully",
-      data: order,
+      data: safeOrderData(req, order),
     });
   } catch (error) {
     console.error("Update order status error:", error);
@@ -342,7 +409,10 @@ export async function updateOrderStatusController(req: Request, res: Response) {
       error instanceof Error &&
       (error.message === "Invalid order status" ||
         error.message.startsWith("Cannot change order status") ||
-        error.message.startsWith("At least one production batch"))
+        error.message.startsWith("At least one active production batch") ||
+        error.message.startsWith("An order cannot be completed") ||
+        error.message.startsWith("Production batch ") ||
+        error.message.includes("remaining to produce"))
     ) {
       return res.status(400).json({
         success: false,
@@ -358,6 +428,10 @@ export async function updateOrderStatusController(req: Request, res: Response) {
         success: false,
         message: error.message,
       });
+    }
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2034") {
+      return res.status(409).json({ success: false, message: "Order or production changed concurrently. Please reload and try again." });
     }
 
     return res.status(500).json({

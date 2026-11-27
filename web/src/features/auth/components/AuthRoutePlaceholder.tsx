@@ -1,4 +1,6 @@
+import { LocalizedText, translateCurrent } from "../../../app/providers/LanguageProvider";
 import { Link } from "react-router-dom";
+import garmentbizIcon from "../../../assets/garmentbiz-icon.svg";
 import "../pages/AuthRouting.css";
 
 interface AuthRoutePlaceholderProps {
@@ -11,16 +13,18 @@ export default function AuthRoutePlaceholder({ mode }: AuthRoutePlaceholderProps
   return (
     <main className="auth-route-state">
       <div className="auth-route-card">
-        <div className="auth-route-brand-mark" aria-hidden="true">G</div>
-        <p className="auth-route-eyebrow">GARMENTBIZ ETHIOPIA</p>
-        <h1>{isLogin ? "Sign in" : "Create your account"}</h1>
+        <div className="auth-route-brand-mark" aria-hidden="true">
+          <img src={garmentbizIcon} alt="" />
+        </div>
+        <p className="auth-route-eyebrow"><LocalizedText text={"GARMENTBIZ ETHIOPIA"} /></p>
+        <h1>{translateCurrent(isLogin ? "Sign in" : "Create your account")}</h1>
         <p className="auth-route-message">
-          {isLogin
+          {translateCurrent(isLogin
             ? "The sign-in form will be added in the next authentication stage."
-            : "The registration form will be added in the next authentication stage."}
+            : "The registration form will be added in the next authentication stage.")}
         </p>
         <Link to={isLogin ? "/register" : "/login"}>
-          {isLogin ? "Go to registration" : "Go to sign in"}
+          {translateCurrent(isLogin ? "Go to registration" : "Go to sign in")}
         </Link>
       </div>
     </main>

@@ -5,8 +5,10 @@ import EmployeesTable from "../components/EmployeesTable";
 import { useCreateEmployee, useEmployees } from "../hooks/useEmployees";
 import type { CreateEmployeeInput } from "../types/employee.types";
 import "./Employees.css";
+import { useLanguage } from "../../../app/providers/LanguageProvider";
 
 export default function EmployeesPage() {
+  const { t } = useLanguage();
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const employeesQuery = useEmployees();
@@ -34,9 +36,9 @@ export default function EmployeesPage() {
     <div className="employees-page">
       <div className="employees-heading">
         <div>
-          <div className="employees-eyebrow"><UserRound size={14} /> WORKFORCE DIRECTORY</div>
-          <h1>Employees</h1>
-          <p>Manage employee profiles and contact information.</p>
+          <div className="employees-eyebrow"><UserRound size={14} /> {t("WORKFORCE DIRECTORY")}</div>
+          <h1>{t("Employees")}</h1>
+          <p>{t("Manage employee profiles and contact information.")}</p>
         </div>
         <button
           className="primary-button"
@@ -44,17 +46,17 @@ export default function EmployeesPage() {
             createEmployee.reset();
             setShowForm((current) => !current);
           }}>
-          <Plus size={18} /> Add employee
+          <Plus size={18} /> {t("Add employee")}
         </button>
       </div>
 
       {createEmployee.isSuccess && !showForm && (
         <div className="employee-success" role="status">
-          Employee registered successfully.
-          <button onClick={() => createEmployee.reset()} aria-label="Dismiss success message">×</button>
+          {t("Employee registered successfully.")}
+          <button onClick={() => createEmployee.reset()} aria-label={t("Dismiss success message")}>×</button>
         </div>
       )}
-      {errorMessage && <div className="employee-error" role="alert">{errorMessage}</div>}
+      {errorMessage && <div className="employee-error" role="alert">{t(errorMessage)}</div>}
 
       {showForm && (
         <EmployeeForm
@@ -64,37 +66,37 @@ export default function EmployeesPage() {
         />
       )}
 
-      <section className="employee-directory" aria-label="Employee list">
+      <section className="employee-directory" aria-label={t("Employee list")}>
         <div className="employee-directory-heading">
           <div>
-            <h2>Employee directory</h2>
-            <p>{employees.length} {employees.length === 1 ? "employee" : "employees"} · includes active and inactive</p>
+            <h2>{t("Employee directory")}</h2>
+            <p>{employees.length} {t(employees.length === 1 ? "employee" : "employees")} · {t("includes active and inactive")}</p>
           </div>
           <div className="employee-directory-actions">
             <label className="employee-search">
               <Search size={17} />
               <input
                 type="search"
-                placeholder="Search name, code, phone or job title"
+                placeholder={t("Search name, code, phone or job title")}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                aria-label="Search employees by name, employee code, phone or job title"
+                aria-label={t("Search employees by name, employee code, phone or job title")}
               />
             </label>
             <button
               className="employee-refresh"
               onClick={() => void employeesQuery.refetch()}
               disabled={employeesQuery.isFetching}
-              aria-label="Refresh employee list">
+              aria-label={t("Refresh employee list")}>
               <RefreshCw size={16} />
-              <span>{employeesQuery.isFetching ? "Refreshing" : "Refresh"}</span>
+              <span>{t(employeesQuery.isFetching ? "Refreshing" : "Refresh")}</span>
             </button>
           </div>
         </div>
 
         <EmployeesTable employees={filteredEmployees} isLoading={employeesQuery.isLoading} />
         {!employeesQuery.isLoading && employees.length > 0 && (
-          <div className="employee-results-count">Showing {filteredEmployees.length} of {employees.length} employees</div>
+          <div className="employee-results-count">{t("Showing")} {filteredEmployees.length} {t("of")} {employees.length} {t("employees")}</div>
         )}
       </section>
     </div>

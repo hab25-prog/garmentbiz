@@ -41,3 +41,21 @@ export const refreshRateLimit = createAuthRateLimit({
   limit: 20,
   message: "Too many token refresh attempts. Please try again later.",
 });
+
+export const verificationRateLimit = createAuthRateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  message: "Too many verification attempts. Please try again later.",
+});
+
+export const verificationResendRateLimit = createAuthRateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  message: "Too many verification email requests. Please try again later.",
+});
+
+export const employeeInvitationAcceptanceRateLimit = createAuthRateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  message: "Too many invitation acceptance attempts. Please try again later.",
+});

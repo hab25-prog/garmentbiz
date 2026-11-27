@@ -2,13 +2,17 @@ import { useState } from "react";
 import { Plus, RefreshCw, Search, Users } from "lucide-react";
 import CustomerForm from "../components/CustomerForm";
 import CustomersTable from "../components/CustomersTable";
+import CustomerReceivablesDialog from "../components/CustomerReceivablesDialog";
 import { useCreateCustomer, useCustomers } from "../hooks/useCustomers";
-import type { CreateCustomerInput } from "../types/customer.types";
+import type { CreateCustomerInput, Customer } from "../types/customer.types";
 import "./Customers.css";
+import { useLanguage } from "../../../app/providers/LanguageProvider";
 
 export default function CustomersPage() {
+  const { t } = useLanguage();
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
+  const [receivablesCustomer, setReceivablesCustomer] = useState<Customer | null>(null);
   const customersQuery = useCustomers();
   const createCustomer = useCreateCustomer();
   const customers = customersQuery.data ?? [];
@@ -36,9 +40,9 @@ export default function CustomersPage() {
     <div className="customers-page">
       <div className="customers-heading">
         <div>
-          <div className="customers-eyebrow"><Users size={14} /> CUSTOMER DIRECTORY</div>
-          <h1>Customers</h1>
-          <p>Manage your customer contacts and business relationships.</p>
+          <div className="customers-eyebrow"><Users size={14} /> {t("CUSTOMER DIRECTORY")}</div>
+          <h1>{t("Customers")}</h1>
+          <p>{t("Manage your customer contacts and business relationships.")}</p>
         </div>
         <button
           className="primary-button"
@@ -46,17 +50,17 @@ export default function CustomersPage() {
             createCustomer.reset();
             setShowForm((current) => !current);
           }}>
-          <Plus size={18} /> Add customer
+          <Plus size={18} /> {t("Add customer")}
         </button>
       </div>
 
       {createCustomer.isSuccess && !showForm && (
         <div className="customer-success" role="status">
-          Customer saved successfully.
-          <button onClick={() => createCustomer.reset()} aria-label="Dismiss success message">×</button>
+          {t("Customer saved successfully.")}
+          <button onClick={() => createCustomer.reset()} aria-label={t("Dismiss success message")}>×</button>
         </div>
       )}
-      {errorMessage && <div className="customer-error" role="alert">{errorMessage}</div>}
+      {errorMessage && <div className="customer-error" role="alert">{t(errorMessage)}</div>}
 
       {showForm && (
         <CustomerForm
@@ -66,30 +70,30 @@ export default function CustomersPage() {
         />
       )}
 
-      <section className="customer-directory" aria-label="Customer list">
+      <section className="customer-directory" aria-label={t("Customer list")}>
         <div className="customer-directory-heading">
           <div>
-            <h2>All customers</h2>
-            <p>{customers.length} {customers.length === 1 ? "contact" : "contacts"} in your directory</p>
+            <h2>{t("All customers")}</h2>
+            <p>{customers.length} {t(customers.length === 1 ? "contact" : "contacts")} {t("in your directory")}</p>
           </div>
           <div className="customer-directory-actions">
             <label className="customer-search">
               <Search size={17} />
               <input
                 type="search"
-                placeholder="Search name, phone or email"
+                placeholder={t("Search name, phone or email")}
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                aria-label="Search customers by name, phone or email"
+                aria-label={t("Search customers by name, phone or email")}
               />
             </label>
             <button
               className="customer-refresh"
               onClick={() => void customersQuery.refetch()}
               disabled={customersQuery.isFetching}
-              aria-label="Refresh customer list">
+              aria-label={t("Refresh customer list")}>
               <RefreshCw size={16} />
-              <span>{customersQuery.isFetching ? "Refreshing" : "Refresh"}</span>
+              <span>{t(customersQuery.isFetching ? "Refreshing" : "Refresh")}</span>
             </button>
           </div>
         </div>
@@ -97,13 +101,20 @@ export default function CustomersPage() {
         <CustomersTable
           customers={filteredCustomers}
           isLoading={customersQuery.isLoading}
+          onViewReceivables={setReceivablesCustomer}
         />
         {!customersQuery.isLoading && customers.length > 0 && (
           <div className="customer-results-count">
-            Showing {filteredCustomers.length} of {customers.length} customers
+            {t("Showing")} {filteredCustomers.length} {t("of")} {customers.length} {t("customers")}
           </div>
         )}
       </section>
+      {receivablesCustomer && (
+        <CustomerReceivablesDialog
+          customer={receivablesCustomer}
+          onClose={() => setReceivablesCustomer(null)}
+        />
+      )}
     </div>
   );
 }

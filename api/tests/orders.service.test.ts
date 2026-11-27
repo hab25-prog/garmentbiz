@@ -4,6 +4,7 @@ import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../src/database/prisma.js";
 import {
   createOrder,
+  getOrderById,
   updateOrderStatus,
 } from "../src/modules/orders/orders.service.js";
 
@@ -92,6 +93,28 @@ test("order creation calculates item totals and generates the yearly order numbe
   assert.equal(String(items.create[0].lineTotal), "360");
 });
 
+test("manager order creation may use the product price but cannot override it", async (t) => {
+  const database = createTestDatabase();
+  t.after(database.restore);
+  await createOrder({
+    businessId: "business-a",
+    customerId: "customer-a",
+    allowCustomUnitPrice: false,
+    items: [{ productId: "product-a", quantity: 1, unitPrice: "100.00" }],
+  });
+  assert.equal(String((database.getCreatedOrderData()!.items as { create: Array<{ unitPrice: Prisma.Decimal }> }).create[0]?.unitPrice), "100");
+
+  const deniedDb = createTestDatabase();
+  t.after(deniedDb.restore);
+  await assert.rejects(createOrder({
+    businessId: "business-a",
+    customerId: "customer-a",
+    allowCustomUnitPrice: false,
+    items: [{ productId: "product-a", quantity: 1, unitPrice: "99.00" }],
+  }), { message: "Managers cannot change order pricing" });
+  assert.equal(deniedDb.getCreatedOrderData(), undefined);
+});
+
 test("order numbering finds the highest numeric sequence above 9999", async (t) => {
   const database = createTestDatabase([
     { orderNo: "ORD-2026-9999" },
@@ -162,6 +185,8 @@ function createStatusTestDatabase(
   options: {
     status?: string;
     batchCount?: number;
+    batches?: Array<{ batchNo: string; status: string; orderItemId: string | null; completedQuantity: number }>;
+    items?: Array<{ id: string; quantity: number; product: { name: string } }>;
     orderExists?: boolean;
     updateCount?: number;
   } = {},
@@ -169,14 +194,16 @@ function createStatusTestDatabase(
   const state = {
     status: options.status ?? "PENDING",
     updateCount: options.updateCount ?? 1,
+    orderLocks: 0,
   };
 
   const tx = {
+    $queryRaw: async () => { state.orderLocks += 1; return []; },
     customerOrder: {
       findFirst: async () =>
         options.orderExists === false
           ? null
-          : { id: "order-a", status: state.status },
+          : { id: "order-a", status: state.status, items: options.items ?? [], customer: {}, batches: options.batches ?? [] },
 
       updateMany: async (args: { data: { status: string } }) => {
         if (state.updateCount === 1) {
@@ -187,7 +214,8 @@ function createStatusTestDatabase(
     },
 
     productionBatch: {
-      count: async () => options.batchCount ?? 0,
+      count: async () => options.batchCount ?? (options.batches ?? []).filter((batch) => batch.status !== "CANCELLED").length,
+      findMany: async () => (options.batches ?? []).filter((batch) => batch.status !== "CANCELLED"),
     },
   };
 
@@ -242,7 +270,7 @@ test("production cannot start without a production batch", async (t) => {
     updateOrderStatus("business-a", "order-a", "IN_PRODUCTION"),
     {
       message:
-        "At least one production batch is required before starting production",
+        "At least one active production batch is required before starting production",
     },
   );
 });
@@ -295,4 +323,172 @@ test("order status update detects a concurrent change", async (t) => {
         "Order status changed concurrently. Please reload and try again.",
     },
   );
+});
+
+test("order detail includes business-scoped batches with order-item product and lifecycle fields", async (t) => {
+  let args: Record<string, unknown> | undefined;
+  const restore = stubMethod(prisma.customerOrder, "findFirst", (async (input: Record<string, unknown>) => {
+    args = input;
+    return { id: "order-a", status: "IN_PRODUCTION", items: [], batches: [] };
+  }) as never);
+  t.after(restore);
+  await getOrderById("business-a", "order-a");
+  const include = args?.include as Record<string, unknown>;
+  const batches = include.batches as { where: { businessId: string }; include: { orderItem: { include: { product: boolean } } } };
+  assert.equal((args?.where as { businessId: string }).businessId, "business-a");
+  assert.equal(batches.where.businessId, "business-a");
+  assert.deepEqual(batches.include.orderItem, { include: { product: true } });
+  assert.ok(batches.include.materialUsages);
+});
+
+function actualCostOrder(options: { status?: string; batches?: Array<Record<string, unknown>>; materialEstimates?: Array<Record<string, unknown>> } = {}) {
+  return {
+    id: "order-a", businessId: "business-a", status: options.status ?? "IN_PRODUCTION",
+    items: [{ id: "item-a", productId: "product-a", quantity: 5, product: { id: "product-a", name: "Shirt" } }],
+    batches: options.batches ?? [], materialEstimates: options.materialEstimates ?? [],
+  };
+}
+function usage(issued: string, consumed: string, returned: string, wasted: string, cost: string) {
+  return { issuedQuantity: new Prisma.Decimal(issued), consumedQuantity: new Prisma.Decimal(consumed), returnedQuantity: new Prisma.Decimal(returned), wastedQuantity: new Prisma.Decimal(wasted), totalCost: new Prisma.Decimal(cost) };
+}
+async function loadActualCosts(order: ReturnType<typeof actualCostOrder>) {
+  let query: Record<string, unknown> | undefined;
+  const restore = stubMethod(prisma.customerOrder, "findFirst", (async (args: Record<string, unknown>) => { query = args; return order; }) as never);
+  try {
+    const result = await getOrderById("business-a", "order-a");
+    return { result, query };
+  } finally { restore(); }
+}
+
+test("actual material cost aggregates reconciled usage per batch and product using Decimal", async () => {
+  const batches = [
+    { id: "batch-1", batchNo: "B-1", status: "IN_PROGRESS", orderItemId: "item-a", materialUsages: [usage("3.5", "2", "1", "0.5", "12.35")] },
+    { id: "batch-2", batchNo: "B-2", status: "COMPLETED", orderItemId: "item-a", materialUsages: [usage("2", "2", "0", "0", "0.10")] },
+  ];
+  const { result } = await loadActualCosts(actualCostOrder({ batches }));
+  const summary = result!.productionActualMaterialCost;
+  assert.equal(String(summary.totalReconciledMaterialCost), "12.45");
+  assert.deepEqual(summary.batchCosts.map((batch: { batchNo: string; materialCost: Prisma.Decimal }) => [batch.batchNo, String(batch.materialCost)]), [["B-1", "12.35"], ["B-2", "0.1"]]);
+  assert.equal(String(summary.productCosts[0]!.materialCost), "12.45");
+  assert.equal(summary.activeBatchCount, 2);
+  assert.equal(summary.completedBatchCount, 1);
+  assert.equal(summary.isFinal, false);
+});
+
+test("actual material cost excludes cancelled batch history", async () => {
+  const { result } = await loadActualCosts(actualCostOrder({ batches: [
+    { id: "active", batchNo: "B-A", status: "COMPLETED", orderItemId: "item-a", materialUsages: [usage("1", "1", "0", "0", "2.25")] },
+    { id: "cancelled", batchNo: "B-C", status: "CANCELLED", orderItemId: "item-a", materialUsages: [usage("1", "1", "0", "0", "99.00")] },
+  ] }));
+  assert.equal(String(result!.productionActualMaterialCost.totalReconciledMaterialCost), "2.25");
+  assert.deepEqual(result!.productionActualMaterialCost.batchCosts.map((batch: { batchNo: string }) => batch.batchNo), ["B-A"]);
+  assert.equal(result!.batches.length, 2, "cancelled batch history remains available");
+});
+
+test("unreconciled usages are provisional and excluded from reconciled cost", async () => {
+  const { result } = await loadActualCosts(actualCostOrder({ batches: [
+    { id: "batch-1", batchNo: "B-1", status: "IN_PROGRESS", orderItemId: "item-a", materialUsages: [usage("4", "1", "0", "0", "3.00")] },
+  ] }));
+  const summary = result!.productionActualMaterialCost;
+  assert.equal(String(summary.totalReconciledMaterialCost), "0");
+  assert.equal(summary.unreconciledUsageCount, 1);
+  assert.equal(summary.isProvisional, true);
+  assert.equal(summary.isFinal, false);
+});
+
+test("no material usage produces a zero provisional summary", async () => {
+  const { result } = await loadActualCosts(actualCostOrder({ batches: [{ id: "batch-1", batchNo: "B-1", status: "PLANNED", orderItemId: "item-a", materialUsages: [] }] }));
+  assert.equal(String(result!.productionActualMaterialCost.totalReconciledMaterialCost), "0");
+  assert.equal(result!.productionActualMaterialCost.unreconciledUsageCount, 0);
+  assert.equal(result!.productionActualMaterialCost.isFinal, false);
+});
+
+test("completed order with all active batches and usages reconciled has final costs", async () => {
+  const { result } = await loadActualCosts(actualCostOrder({ status: "COMPLETED", batches: [{ id: "batch-1", batchNo: "B-1", status: "COMPLETED", orderItemId: "item-a", materialUsages: [usage("2", "1", "1", "0", "4.75")] }] }));
+  assert.equal(String(result!.productionActualMaterialCost.totalReconciledMaterialCost), "4.75");
+  assert.equal(result!.productionActualMaterialCost.isFinal, true);
+  assert.equal(result!.productionActualMaterialCost.isProvisional, false);
+});
+
+test("actual cost query is scoped to the authenticated business and does not read cost sheets", async () => {
+  const { result, query } = await loadActualCosts(actualCostOrder({ batches: [{ id: "batch-1", batchNo: "B-1", status: "IN_PROGRESS", orderItemId: "item-a", materialUsages: [usage("1", "1", "0", "0", "8.10")] }] }));
+  assert.equal((query!.where as { businessId: string }).businessId, "business-a");
+  assert.equal(((query!.include as { batches: { where: { businessId: string } } }).batches.where.businessId), "business-a");
+  assert.equal(String(result!.productionActualMaterialCost.totalReconciledMaterialCost), "8.1");
+});
+
+test("comparison scales the immutable estimate snapshot to completed quantity and uses reconciled usage cost", async () => {
+  const estimate = { id: "estimate-a", items: [{ orderItemId: "item-a", productId: "product-a", orderedQuantity: 5, requirements: [{ requiredQuantity: new Prisma.Decimal("10"), materialEstimate: { requiredQuantity: new Prisma.Decimal("10"), estimatedCost: new Prisma.Decimal("100") } }] }] };
+  const { result } = await loadActualCosts(actualCostOrder({ materialEstimates: [estimate], batches: [
+    { id: "done", batchNo: "B-D", status: "COMPLETED", orderItemId: "item-a", completedQuantity: 2, materialUsages: [usage("3", "1", "1", "1", "25.50")] },
+    { id: "working", batchNo: "B-W", status: "IN_PROGRESS", orderItemId: "item-a", completedQuantity: 1, materialUsages: [usage("1", "0", "0", "0", "99.00")] },
+  ] }));
+  const comparison = result!.estimatedVsActualMaterialCost;
+  assert.equal(comparison.status, "COMPLETE");
+  assert.equal(String(comparison.items[0]!.estimatedMaterialCost), "40");
+  assert.equal(String(comparison.items[0]!.actualMaterialCost), "25.5");
+  assert.equal(String(comparison.items[0]!.variance), "-14.5");
+  assert.equal(String(comparison.items[0]!.estimatedCostPerUnit), "20");
+  assert.equal(String(comparison.items[0]!.actualCostPerUnit), "12.75");
+  assert.equal(String(comparison.estimatedMaterialCost), "40");
+});
+
+const orderItems = [
+  { id: "item-shirt", quantity: 3, product: { name: "Shirt" } },
+  { id: "item-pants", quantity: 2, product: { name: "Pants" } },
+];
+const fulfilledBatches = [
+  { batchNo: "BATCH-S1", status: "COMPLETED", orderItemId: "item-shirt", completedQuantity: 1 },
+  { batchNo: "BATCH-S2", status: "COMPLETED", orderItemId: "item-shirt", completedQuantity: 2 },
+  { batchNo: "BATCH-P1", status: "COMPLETED", orderItemId: "item-pants", completedQuantity: 2 },
+];
+
+test("order completes when each product quantity is fulfilled across multiple batches", async (t) => {
+  const database = createStatusTestDatabase({ status: "IN_PRODUCTION", batches: fulfilledBatches, items: orderItems });
+  t.after(database.restore);
+  const result = await updateOrderStatus("business-a", "order-a", "COMPLETED");
+  assert.equal(database.state.status, "COMPLETED");
+  assert.equal(result?.status, "COMPLETED");
+  assert.equal(database.state.orderLocks, 1);
+});
+
+test("order completion rejects an incomplete product quantity with useful detail", async (t) => {
+  const database = createStatusTestDatabase({ status: "IN_PRODUCTION", batches: fulfilledBatches.slice(1), items: orderItems });
+  t.after(database.restore);
+  await assert.rejects(updateOrderStatus("business-a", "order-a", "COMPLETED"), /Shirt has 1 unit remaining to produce/);
+  assert.equal(database.state.status, "IN_PRODUCTION");
+});
+
+test("order completion rejects when no batches exist", async (t) => {
+  const database = createStatusTestDatabase({ status: "IN_PRODUCTION", items: orderItems });
+  t.after(database.restore);
+  await assert.rejects(updateOrderStatus("business-a", "order-a", "COMPLETED"), /without an active production batch/);
+});
+
+test("order completion rejects when only cancelled batches exist", async (t) => {
+  const database = createStatusTestDatabase({ status: "IN_PRODUCTION", items: orderItems, batches: [{ ...fulfilledBatches[0]!, status: "CANCELLED" }] });
+  t.after(database.restore);
+  await assert.rejects(updateOrderStatus("business-a", "order-a", "COMPLETED"), /without an active production batch/);
+});
+
+test("order completion rejects an unfinished active batch", async (t) => {
+  const database = createStatusTestDatabase({ status: "IN_PRODUCTION", items: orderItems, batches: [{ ...fulfilledBatches[0]!, status: "IN_PROGRESS" }] });
+  t.after(database.restore);
+  await assert.rejects(updateOrderStatus("business-a", "order-a", "COMPLETED"), /Production batch BATCH-S1 must be completed/);
+});
+
+test("order cannot enter production when its only batch is cancelled", async (t) => {
+  const database = createStatusTestDatabase({ status: "CONFIRMED", batches: [{ ...fulfilledBatches[0]!, status: "CANCELLED" }] });
+  t.after(database.restore);
+  await assert.rejects(updateOrderStatus("business-a", "order-a", "IN_PRODUCTION"), /At least one active production batch/);
+});
+
+test("delivery is rejected before completion and succeeds after completion", async (t) => {
+  const before = createStatusTestDatabase({ status: "IN_PRODUCTION" });
+  t.after(before.restore);
+  await assert.rejects(updateOrderStatus("business-a", "order-a", "DELIVERED"), /Cannot change order status from IN_PRODUCTION to DELIVERED/);
+  const after = createStatusTestDatabase({ status: "COMPLETED" });
+  t.after(after.restore);
+  await updateOrderStatus("business-a", "order-a", "DELIVERED");
+  assert.equal(after.state.status, "DELIVERED");
 });

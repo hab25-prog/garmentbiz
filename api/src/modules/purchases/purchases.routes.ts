@@ -9,13 +9,14 @@ import {
   requireActiveBusinessMembership,
   requireCsrf,
 } from "../../middleware/auth.middleware.js";
+import { requirePermission } from "../../middleware/authorization.middleware.js";
 
 const router = Router();
 
 router.use(authenticate, requireActiveBusinessMembership);
 
-router.post("/", requireCsrf, createPurchaseController);
-router.get("/", getPurchasesController);
-router.post("/:id/receive", requireCsrf, receivePurchaseController);
+router.post("/", requirePermission("purchases.manage"), requireCsrf, createPurchaseController);
+router.get("/", requirePermission("purchases.read"), getPurchasesController);
+router.post("/:id/receive", requirePermission("purchases.receive"), requireCsrf, receivePurchaseController);
 
 export default router;

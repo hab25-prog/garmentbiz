@@ -14,6 +14,8 @@ interface CsrfTokenResponse {
 export interface ApiRequestOptions extends RequestInit {
   /** Set false for public authentication endpoints that should not carry a stale bearer token. */
   authenticated?: boolean;
+  /** Return the success envelope itself for endpoints whose contract has no `data` property. */
+  responseFormat?: "data" | "envelope";
 }
 
 export class ApiError extends Error {
@@ -51,10 +53,22 @@ function userMessage(status: number, serverMessage?: string): string {
   if (status === 403 && serverMessage === "CSRF validation failed") {
     return "Your security session expired. Please try again.";
   }
+  if (status === 403 && serverMessage === "Origin not allowed") {
+    return "Email verification could not start from this site. Please contact support.";
+  }
   if (status === 403) {
+    const approvedMessages = new Set([
+      "Please verify your email before signing in.",
+      "You do not have permission to complete this action.",
+      "You do not have permission to manage employee invitations",
+      "Only the business owner can calculate or change order pricing",
+      "Managers cannot change order pricing",
+      "Active business membership is required",
+    ]);
+    if (serverMessage && approvedMessages.has(serverMessage)) return serverMessage;
     return "You do not have permission to complete this action.";
   }
-  if (status === 400 || status === 404 || status === 409 || status === 422) {
+  if (status === 400 || status === 404 || status === 409 || status === 410 || status === 422) {
     const safeMessage = serverMessage && serverMessage.length <= 240 &&
       !/(?:prisma|sql|stack trace|exception|constraint|database|internal server|\bat\s+\w+\s*\()/i.test(serverMessage)
       ? serverMessage
@@ -102,7 +116,7 @@ async function request<T>(
   options: ApiRequestOptions = {},
   retryCsrf = true,
 ): Promise<T> {
-  const { authenticated = true, ...fetchOptions } = options;
+  const { authenticated = true, responseFormat = "data", ...fetchOptions } = options;
   const method = (fetchOptions.method ?? "GET").toUpperCase();
   const headers = new Headers(fetchOptions.headers);
   if (fetchOptions.body !== undefined && !headers.has("Content-Type")) {
@@ -151,9 +165,14 @@ async function request<T>(
     typeof result !== "object" ||
     result === null ||
     !("success" in result) ||
-    result.success !== true ||
-    !("data" in result)
+    result.success !== true
   ) {
+    throw new ApiError("The server returned an unexpected response. Please try again.", response.status);
+  }
+
+  if (responseFormat === "envelope") return result as T;
+
+  if (!("data" in result)) {
     throw new ApiError("The server returned an unexpected response. Please try again.", response.status);
   }
 

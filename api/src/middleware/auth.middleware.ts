@@ -100,10 +100,13 @@ export async function requireActiveBusinessMembership(
         businessId: true,
         role: true,
         business: { select: { name: true } },
-        user: { select: { isActive: true } },
+        user: { select: { isActive: true, emailVerifiedAt: true } },
       },
     });
     if (!membership?.user.isActive) return forbidden(response);
+    if (!membership.user.emailVerifiedAt) {
+      return forbidden(response, "Email verification required");
+    }
     if (membership.businessId !== principal.businessId) {
       return forbidden(response, "Token business membership is no longer valid");
     }

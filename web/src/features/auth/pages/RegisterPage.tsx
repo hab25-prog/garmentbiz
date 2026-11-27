@@ -4,6 +4,8 @@ import { Link } from "react-router-dom";
 import { ApiError } from "../../../lib/api-client";
 import { useAuth } from "../context/AuthProvider";
 import AuthPageLayout from "../components/AuthPageLayout";
+import { useLanguage } from "../../../app/providers/LanguageProvider";
+import { LanguageSelector } from "../../../app/components/LanguageSelector";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -17,6 +19,7 @@ interface RegistrationErrors {
 
 export default function RegisterPage() {
   const { register } = useAuth();
+  const { language, t } = useLanguage();
   const submitting = useRef(false);
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -28,6 +31,7 @@ export default function RegisterPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<RegistrationErrors>({});
   const [submissionError, setSubmissionError] = useState("");
+  const [registrationAccepted, setRegistrationAccepted] = useState(false);
 
   function validate(): RegistrationErrors {
     const normalizedEmail = email.trim();
@@ -63,7 +67,9 @@ export default function RegisterPage() {
         email: email.trim(),
         businessName: businessName.trim(),
         password,
+        language,
       });
+      setRegistrationAccepted(true);
     } catch (error) {
       setSubmissionError(
         error instanceof ApiError ? error.message : "Unable to create your account right now. Please try again.",
@@ -76,20 +82,30 @@ export default function RegisterPage() {
 
   function fieldError(field: keyof RegistrationErrors, id: string) {
     const message = errors[field];
-    return message ? <span id={id} className="auth-field-error">{message}</span> : null;
+    return message ? <span id={id} className="auth-field-error">{t(message)}</span> : null;
   }
 
   return (
     <AuthPageLayout
-      title="Create your account"
-      description="Set up your workshop account to get started."
-      footer={<>Already registered? <Link to="/login">Sign in</Link></>}
+      title={t(registrationAccepted ? "Check your email" : "Create your account")}
+      description={registrationAccepted
+        ? t("Your registration request was accepted.")
+        : t("Set up your workshop account to get started.")}
+      footer={<>{t("Already registered?")} <Link to="/login">{t("Sign in")}</Link></>}
     >
+      <LanguageSelector />
+      {registrationAccepted ? (
+        <div className="auth-registration-confirmation" role="status" aria-live="polite">
+          <p>{t("If registration can be completed for that address, verification instructions may arrive by email.")}</p>
+          <p>{t("Email delivery can be delayed or unsuccessful. Check your inbox and spam folder. You must verify your email before signing in.")}</p>
+          <Link className="auth-registration-login-link" to="/login">{t("Return to sign in")}</Link>
+        </div>
+      ) : (
       <form className="auth-form auth-register-form" onSubmit={handleSubmit} noValidate>
-        {submissionError && <div className="auth-form-error" role="alert">{submissionError}</div>}
+        {submissionError && <div className="auth-form-error" role="alert">{t(submissionError)}</div>}
 
         <label className="auth-field" htmlFor="register-full-name">
-          Full name
+          {t("Full name")}
           <input
             id="register-full-name"
             autoComplete="name"
@@ -100,13 +116,13 @@ export default function RegisterPage() {
             aria-invalid={Boolean(errors.fullName)}
             aria-describedby={errors.fullName ? "register-full-name-error" : undefined}
             onChange={(event) => setFullName(event.target.value)}
-            placeholder="Your full name"
+            placeholder={t("Your full name")}
           />
           {fieldError("fullName", "register-full-name-error")}
         </label>
 
         <label className="auth-field" htmlFor="register-email">
-          Email address
+          {t("Email address")}
           <input
             id="register-email"
             type="email"
@@ -117,13 +133,13 @@ export default function RegisterPage() {
             aria-invalid={Boolean(errors.email)}
             aria-describedby={errors.email ? "register-email-error" : undefined}
             onChange={(event) => setEmail(event.target.value)}
-            placeholder="you@example.com"
+            placeholder={t("you@example.com")}
           />
           {fieldError("email", "register-email-error")}
         </label>
 
         <label className="auth-field" htmlFor="register-business-name">
-          Business name
+          {t("Business name")}
           <input
             id="register-business-name"
             autoComplete="organization"
@@ -133,13 +149,13 @@ export default function RegisterPage() {
             aria-invalid={Boolean(errors.businessName)}
             aria-describedby={errors.businessName ? "register-business-name-error" : undefined}
             onChange={(event) => setBusinessName(event.target.value)}
-            placeholder="Your workshop or business"
+            placeholder={t("Your workshop or business")}
           />
           {fieldError("businessName", "register-business-name-error")}
         </label>
 
         <label className="auth-field" htmlFor="register-password">
-          Password
+          {t("Password")}
           <span className="auth-password-control">
             <input
               id="register-password"
@@ -152,12 +168,12 @@ export default function RegisterPage() {
               aria-invalid={Boolean(errors.password)}
               aria-describedby={errors.password ? "register-password-error" : undefined}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="12–128 characters"
+              placeholder={t("12–128 characters")}
             />
             <button
               className="auth-password-toggle"
               type="button"
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={t(showPassword ? "Hide password" : "Show password")}
               aria-pressed={showPassword}
               onClick={() => setShowPassword((visible) => !visible)}
             >
@@ -168,7 +184,7 @@ export default function RegisterPage() {
         </label>
 
         <label className="auth-field" htmlFor="register-confirm-password">
-          Confirm password
+          {t("Confirm password")}
           <span className="auth-password-control">
             <input
               id="register-confirm-password"
@@ -179,12 +195,12 @@ export default function RegisterPage() {
               aria-invalid={Boolean(errors.confirmPassword)}
               aria-describedby={errors.confirmPassword ? "register-confirm-password-error" : undefined}
               onChange={(event) => setConfirmPassword(event.target.value)}
-              placeholder="Enter the same password again"
+              placeholder={t("Enter the same password again")}
             />
             <button
               className="auth-password-toggle"
               type="button"
-              aria-label={showConfirmation ? "Hide confirmation" : "Show confirmation"}
+              aria-label={t(showConfirmation ? "Hide confirmation" : "Show confirmation")}
               aria-pressed={showConfirmation}
               onClick={() => setShowConfirmation((visible) => !visible)}
             >
@@ -195,9 +211,10 @@ export default function RegisterPage() {
         </label>
 
         <button className="auth-submit-button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Creating account…" : "Create account"}
+          {t(isSubmitting ? "Creating account…" : "Create account")}
         </button>
       </form>
+      )}
     </AuthPageLayout>
   );
 }

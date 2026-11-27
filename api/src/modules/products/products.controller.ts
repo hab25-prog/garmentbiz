@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import { Prisma } from "../../../generated/prisma/client.js";
 import { assertRequestedBusiness } from "../../middleware/auth.middleware.js";
+import { redactFinancialFields } from "../../authorization/financial-fields.js";
+import { roleHasPermission } from "../../authorization/permissions.js";
 import {
   createProduct,
   createProductMaterialRequirement,
@@ -179,7 +181,7 @@ export async function createProductController(req: Request, res: Response) {
     return res.status(201).json({
       success: true,
       message: "Product created successfully",
-      data: product,
+      data: roleHasPermission(req.businessPrincipal?.role, "dashboard.financial.read") ? product : redactFinancialFields(product),
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Business not found") {
@@ -207,7 +209,7 @@ export async function getProductsController(req: Request, res: Response) {
     if (!businessId) return;
 
     const products = await getProducts(businessId);
-    return res.status(200).json({ success: true, data: products });
+    return res.status(200).json({ success: true, data: roleHasPermission(req.businessPrincipal?.role, "dashboard.financial.read") ? products : redactFinancialFields(products) });
   } catch (error) {
     console.error("Get products error:", error);
     return res.status(500).json({

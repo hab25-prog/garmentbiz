@@ -1,3 +1,4 @@
+import { LocalizedText, translateCurrent } from "../../../app/providers/LanguageProvider";
 import { useState, type FormEvent } from "react";
 import type { CreateEmployeeInput } from "../types/employee.types";
 
@@ -39,33 +40,31 @@ export default function EmployeeForm({
     <form className="employee-form" onSubmit={handleSubmit}>
       <div className="employee-form-heading">
         <div>
-          <h2>Register employee</h2>
-          <p>Add an employee to your workshop directory.</p>
+          <h2><LocalizedText text={"Register employee"} /></h2>
+          <p><LocalizedText text={"Add an employee to your workshop directory."} /></p>
         </div>
       </div>
 
       <div className="employee-form-grid">
         <label>
-          Full name <span aria-hidden="true">*</span>
+          <LocalizedText text={"\n          Full name "} /><span aria-hidden="true">*</span>
           <input
             autoFocus
             required
             value={form.fullName}
             onChange={(event) => updateField("fullName", event.target.value)}
-            placeholder="Enter employee name"
+            placeholder={translateCurrent("Enter employee name")}
           />
         </label>
         <label>
-          Employee code
-          <input
+          <LocalizedText text={"\n          Employee code\n          "} /><input
             value={form.employeeCode}
             onChange={(event) => updateField("employeeCode", event.target.value)}
-            placeholder="e.g. EMP-001"
+            placeholder={translateCurrent("e.g. EMP-001")}
           />
         </label>
         <label>
-          Phone number
-          <input
+          <LocalizedText text={"\n          Phone number\n          "} /><input
             type="tel"
             value={form.phone}
             onChange={(event) => updateField("phone", event.target.value)}
@@ -73,16 +72,14 @@ export default function EmployeeForm({
           />
         </label>
         <label>
-          Job title / position
-          <input
+          <LocalizedText text={"\n          Job title / position\n          "} /><input
             value={form.jobTitle}
             onChange={(event) => updateField("jobTitle", event.target.value)}
-            placeholder="e.g. Sewing operator"
+            placeholder={translateCurrent("e.g. Sewing operator")}
           />
         </label>
         <label>
-          Hire date
-          <input
+          <LocalizedText text={"\n          Hire date\n          "} /><input
             type="date"
             value={form.hireDate}
             onChange={(event) => updateField("hireDate", event.target.value)}
@@ -96,13 +93,12 @@ export default function EmployeeForm({
           className="employee-secondary-button"
           onClick={onCancel}
           disabled={isSubmitting}>
-          Cancel
-        </button>
+          <LocalizedText text={"\n          Cancel\n        "} /></button>
         <button
           type="submit"
           className="primary-button"
           disabled={isSubmitting || !form.fullName.trim()}>
-          {isSubmitting ? "Saving..." : "Save employee"}
+          {translateCurrent(isSubmitting ? "Saving..." : "Save employee")}
         </button>
       </div>
     </form>

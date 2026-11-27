@@ -1,4 +1,6 @@
+import { LocalizedText } from "../../../app/providers/LanguageProvider";
 import type { ReactNode } from "react";
+import garmentbizIcon from "../../../assets/garmentbiz-icon.svg";
 
 interface AuthPageLayoutProps {
   title: string;
@@ -11,8 +13,10 @@ export default function AuthPageLayout({ title, description, children, footer }:
   return (
     <main className="auth-route-state">
       <section className="auth-route-card" aria-labelledby="auth-page-title">
-        <div className="auth-route-brand-mark" aria-hidden="true">G</div>
-        <p className="auth-route-eyebrow">GARMENTBIZ ETHIOPIA</p>
+        <div className="auth-route-brand-mark" aria-hidden="true">
+          <img src={garmentbizIcon} alt="" />
+        </div>
+        <p className="auth-route-eyebrow"><LocalizedText text={"GARMENTBIZ ETHIOPIA"} /></p>
         <h1 id="auth-page-title">{title}</h1>
         <p className="auth-route-message">{description}</p>
         {children}

@@ -72,6 +72,14 @@
   font-weight: 800;
 }
 
+.auth-route-brand-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
 .auth-route-eyebrow {
   margin: 0 0 10px;
   color: var(--auth-primary);
@@ -213,6 +221,36 @@
   color: #b91c1c;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.auth-registration-confirmation {
+  margin-top: 24px;
+  color: var(--auth-text);
+  font-size: 13px;
+  line-height: 1.65;
+  text-align: left;
+}
+
+.auth-registration-confirmation p {
+  margin: 0 0 12px;
+}
+
+.auth-registration-login-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  margin-top: 8px;
+  padding: 0 15px;
+  border-radius: 7px;
+  background: var(--auth-primary);
+  color: #fff !important;
+  font-weight: 650;
+}
+
+.auth-registration-login-link:focus-visible {
+  outline: 3px solid rgb(37 99 235 / 28%);
+  outline-offset: 3px;
 }
 
 .auth-submit-button {

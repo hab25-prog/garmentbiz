@@ -6,10 +6,15 @@ import {
 import {
   AuthError,
   getCurrentUser,
+  getUserLanguage,
+  isUserLanguage,
   login,
   refresh,
+  resendVerification,
   register,
   revokeRefreshToken,
+  verifyEmail,
+  updateUserLanguage,
 } from "./auth.service.js";
 import {
   clearCsrfCookie,
@@ -21,6 +26,7 @@ import {
   setCsrfCookie,
   setRefreshCookie,
 } from "./auth.security.js";
+import { VERIFICATION_RESEND_GENERIC_MESSAGE } from "./auth.service.js";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -51,6 +57,12 @@ function authErrorResponse(response: Response, error: unknown, operation: string
     if (error.code === "BUSINESS_SELECTION_REQUIRED") {
       return response.status(409).json({ success: false, message: error.message });
     }
+    if (error.code === "EMAIL_NOT_VERIFIED") {
+      return response.status(403).json({ success: false, message: error.message });
+    }
+    if (error.code === "VERIFICATION_TOKEN_INVALID") {
+      return response.status(400).json({ success: false, message: error.message });
+    }
     if (error.code === "REFRESH_REUSED") clearRefreshCookie(response);
     return response.status(401).json({ success: false, message: error.message });
   }
@@ -60,7 +72,7 @@ function authErrorResponse(response: Response, error: unknown, operation: string
 
 async function respondWithTokens(
   response: Response,
-  tokens: Awaited<ReturnType<typeof register>>,
+  tokens: Awaited<ReturnType<typeof login>>,
   message: string,
   statusCode = 200,
 ) {
@@ -87,7 +99,7 @@ export async function registerController(request: Request, response: Response) {
   try {
     const body = requestBody(request);
     if (!body) return response.status(400).json({ success: false, message: "Invalid request body" });
-    const { fullName, email, password, businessName } = body;
+    const { fullName, email, password, businessName, language } = body;
     const credentialError = validateCredentials(email, password);
     if (credentialError) return response.status(400).json({ success: false, message: credentialError });
     if (typeof fullName !== "string" || !fullName.trim() || fullName.trim().length > 120) {
@@ -96,17 +108,59 @@ export async function registerController(request: Request, response: Response) {
     if (typeof businessName !== "string" || !businessName.trim() || businessName.trim().length > 160) {
       return response.status(400).json({ success: false, message: "Business name is required (maximum 160 characters)" });
     }
+    if (language !== undefined && !isUserLanguage(language)) {
+      return response.status(400).json({ success: false, message: "Language must be either en or am" });
+    }
 
-    const tokens = await register({
+    await register({
       fullName: fullName.trim(),
       email: (email as string).trim().toLowerCase(),
       password: password as string,
       businessName: businessName.trim(),
+      ...(language !== undefined ? { language } : {}),
     });
-    return await respondWithTokens(response, tokens, "Registration successful", 201);
+    return response.status(202).json({
+      success: true,
+      message: VERIFICATION_RESEND_GENERIC_MESSAGE,
+    });
   } catch (error) {
+    if (error instanceof AuthError && error.code === "EMAIL_EXISTS") {
+      return response.status(202).json({
+        success: true,
+        message: VERIFICATION_RESEND_GENERIC_MESSAGE,
+      });
+    }
     return authErrorResponse(response, error, "Registration");
   }
+}
+
+export async function verifyEmailController(request: Request, response: Response) {
+  if (request.query.token !== undefined) {
+    return response.status(400).json({ success: false, message: "Submit the verification token in the request body" });
+  }
+  const body = requestBody(request);
+  if (!body || typeof body.token !== "string" || body.token.length > 128) {
+    return response.status(400).json({ success: false, message: "A valid verification token is required" });
+  }
+  try {
+    await verifyEmail(body.token);
+    return response.status(200).json({ success: true, message: "Email verified. You can now sign in." });
+  } catch (error) {
+    return authErrorResponse(response, error, "Email verification");
+  }
+}
+
+export async function resendVerificationController(request: Request, response: Response) {
+  const body = requestBody(request);
+  if (!body || typeof body.email !== "string" || !EMAIL_PATTERN.test(body.email.trim()) || body.email.trim().length > 254) {
+    return response.status(400).json({ success: false, message: "A valid email address is required" });
+  }
+  try {
+    await resendVerification(body.email.trim().toLowerCase());
+  } catch {
+    // Preserve the same response and avoid leaking account or SMTP state.
+  }
+  return response.status(202).json({ success: true, message: VERIFICATION_RESEND_GENERIC_MESSAGE });
 }
 
 export async function loginController(request: Request, response: Response) {
@@ -169,3 +223,30 @@ export const authenticatedCurrentUser = [
   requireActiveBusinessMembership,
   currentUserController,
 ];
+
+export async function getCurrentUserLanguageController(request: Request, response: Response) {
+  const userId = request.authPrincipal?.userId;
+  if (!userId) return response.status(401).json({ success: false, message: "Authentication required" });
+  try {
+    const language = await getUserLanguage(userId);
+    if (!language) return response.status(404).json({ success: false, message: "User preference not found" });
+    return response.status(200).json({ success: true, data: { language } });
+  } catch {
+    return response.status(500).json({ success: false, message: "Unable to load language preference" });
+  }
+}
+
+export async function updateCurrentUserLanguageController(request: Request, response: Response) {
+  const userId = request.authPrincipal?.userId;
+  if (!userId) return response.status(401).json({ success: false, message: "Authentication required" });
+  const body = requestBody(request);
+  if (!body || Object.keys(body).length !== 1 || !Object.hasOwn(body, "language") || !isUserLanguage(body.language)) {
+    return response.status(400).json({ success: false, message: "Language must be either en or am" });
+  }
+  try {
+    const language = await updateUserLanguage(userId, body.language);
+    return response.status(200).json({ success: true, data: { language } });
+  } catch {
+    return response.status(500).json({ success: false, message: "Unable to update language preference" });
+  }
+}

@@ -1,3 +1,4 @@
+import { LocalizedText, translateCurrent } from "../../../app/providers/LanguageProvider";
 import type { Supplier } from "../types/supplier.types";
 
 interface SuppliersTableProps {
@@ -7,14 +8,14 @@ interface SuppliersTableProps {
 
 export default function SuppliersTable({ suppliers, isLoading }: SuppliersTableProps) {
   if (isLoading) {
-    return <div className="supplier-empty-state"><p>Loading suppliers…</p></div>;
+    return <div className="supplier-empty-state"><p><LocalizedText text={"Loading suppliers…"} /></p></div>;
   }
 
   if (suppliers.length === 0) {
     return (
       <div className="supplier-empty-state">
-        <h3>No suppliers found</h3>
-        <p>Add your first supplier to start managing supplier information.</p>
+        <h3><LocalizedText text={"No suppliers found"} /></h3>
+        <p><LocalizedText text={"Add your first supplier to start managing supplier information."} /></p>
       </div>
     );
   }
@@ -24,12 +25,12 @@ export default function SuppliersTable({ suppliers, isLoading }: SuppliersTableP
       <table className="supplier-table">
         <thead>
           <tr>
-            <th>Supplier Name</th>
-            <th>Contact Person</th>
-            <th>Phone</th>
-            <th>Email</th>
-            <th>Address</th>
-            <th>Status</th>
+            <th><LocalizedText text={"Supplier Name"} /></th>
+            <th><LocalizedText text={"Contact Person"} /></th>
+            <th><LocalizedText text={"Phone"} /></th>
+            <th><LocalizedText text={"Email"} /></th>
+            <th><LocalizedText text={"Address"} /></th>
+            <th><LocalizedText text={"Status"} /></th>
           </tr>
         </thead>
 
@@ -48,7 +49,7 @@ export default function SuppliersTable({ suppliers, isLoading }: SuppliersTableP
                   className={`supplier-status ${
                     supplier.isActive ? "active" : "inactive"
                   }`}>
-                  {supplier.isActive ? "Active" : "Inactive"}
+                  {translateCurrent(supplier.isActive ? "Active" : "Inactive")}
                 </span>
               </td>
             </tr>

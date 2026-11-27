@@ -1,0 +1,60 @@
+.settings-page {
+  width: 100%;
+}
+
+.settings-preferences {
+  width: min(100%, 42rem);
+}
+
+.settings-preferences > h2 {
+  margin: 0 0 0.85rem;
+  font-size: 1.05rem;
+}
+
+.settings-card {
+  display: grid;
+  gap: 0.65rem;
+  width: min(100%, 42rem);
+  padding: 1.5rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 0.9rem;
+  background: var(--surface, #fff);
+  box-shadow: 0 8px 28px #0f172a0a;
+}
+
+.settings-card h3,
+.settings-card p {
+  margin: 0;
+}
+
+.settings-card > div {
+  margin-bottom: 0.5rem;
+}
+
+.settings-card > div p {
+  margin-top: 0.4rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.settings-card select {
+  width: min(100%, 18rem);
+  min-height: 2.75rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 0.55rem;
+  background: var(--surface, #fff);
+  color: var(--text-primary, #0f172a);
+  font: inherit;
+}
+
+.settings-error {
+  color: #b42318;
+}
+
+.settings-error button {
+  margin-inline-start: 0.75rem;
+}
+
+.settings-success {
+  color: #167044;
+}

@@ -1,6 +1,8 @@
 
 import type { Request, Response } from "express";
 import { assertRequestedBusiness } from "../../middleware/auth.middleware.js";
+import { redactFinancialFields } from "../../authorization/financial-fields.js";
+import { roleHasPermission } from "../../authorization/permissions.js";
 import {
   createPurchase,
   getPurchases,
@@ -72,7 +74,7 @@ export async function createPurchaseController(
     return res.status(201).json({
       success: true,
       message: "Purchase created successfully",
-      data: purchase,
+      data: roleHasPermission(req.businessPrincipal?.role, "inventory.costs.read") ? purchase : redactFinancialFields(purchase),
     });
   } catch (error) {
     console.error("Create purchase error:", error);
@@ -120,7 +122,7 @@ export async function getPurchasesController(
 
     return res.status(200).json({
       success: true,
-      data: purchases,
+      data: roleHasPermission(req.businessPrincipal?.role, "inventory.costs.read") ? purchases : redactFinancialFields(purchases),
     });
   } catch (error) {
     console.error("Get purchases error:", error);
@@ -156,7 +158,7 @@ export async function receivePurchaseController(
     return res.status(200).json({
       success: true,
       message: "Purchase received successfully",
-      data: purchase,
+      data: roleHasPermission(req.businessPrincipal?.role, "inventory.costs.read") ? purchase : redactFinancialFields(purchase),
     });
   } catch (error) {
     console.error("Receive purchase error:", error);

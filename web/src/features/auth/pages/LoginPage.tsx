@@ -4,11 +4,14 @@ import { Link } from "react-router-dom";
 import { ApiError } from "../../../lib/api-client";
 import { useAuth } from "../context/AuthProvider";
 import AuthPageLayout from "../components/AuthPageLayout";
+import { useLanguage } from "../../../app/providers/LanguageProvider";
+import { LanguageSelector } from "../../../app/components/LanguageSelector";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { t } = useLanguage();
   const submitting = useRef(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,15 +53,16 @@ export default function LoginPage() {
 
   return (
     <AuthPageLayout
-      title="Welcome back"
-      description="Sign in to manage your garment workshop."
-      footer={<>New to GarmentBiz? <Link to="/register">Create an account</Link></>}
+      title={t("Welcome back")}
+      description={t("Sign in to manage your garment workshop.")}
+      footer={<>{t("New to GarmentBiz?")} <Link to="/register">{t("Create an account")}</Link></>}
     >
+      <LanguageSelector />
       <form className="auth-form" onSubmit={handleSubmit} noValidate>
-        {submissionError && <div className="auth-form-error" role="alert">{submissionError}</div>}
+        {submissionError && <div className="auth-form-error" role="alert">{t(submissionError)}</div>}
 
         <label className="auth-field" htmlFor="login-email">
-          Email address
+          {t("Email address")}
           <input
             id="login-email"
             type="email"
@@ -73,13 +77,13 @@ export default function LoginPage() {
               setEmail(event.target.value);
               if (emailError) setEmailError("");
             }}
-            placeholder="you@example.com"
+            placeholder={t("you@example.com")}
           />
-          {emailError && <span id="login-email-error" className="auth-field-error">{emailError}</span>}
+          {emailError && <span id="login-email-error" className="auth-field-error">{t(emailError)}</span>}
         </label>
 
         <label className="auth-field" htmlFor="login-password">
-          Password
+          {t("Password")}
           <span className="auth-password-control">
             <input
               id="login-password"
@@ -95,23 +99,23 @@ export default function LoginPage() {
                 setPassword(event.target.value);
                 if (passwordError) setPasswordError("");
               }}
-              placeholder="Enter your password"
+              placeholder={t("Enter your password")}
             />
             <button
               className="auth-password-toggle"
               type="button"
-              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-label={t(showPassword ? "Hide password" : "Show password")}
               aria-pressed={showPassword}
               onClick={() => setShowPassword((visible) => !visible)}
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </span>
-          {passwordError && <span id="login-password-error" className="auth-field-error">{passwordError}</span>}
+          {passwordError && <span id="login-password-error" className="auth-field-error">{t(passwordError)}</span>}
         </label>
 
         <button className="auth-submit-button" type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Signing in…" : "Sign in"}
+          {t(isSubmitting ? "Signing in…" : "Sign in")}
         </button>
       </form>
     </AuthPageLayout>

@@ -5,15 +5,21 @@ import App from "./App";
 import { QueryProvider } from "./app/providers/QueryProvider";
 import { BrowserRouter } from "react-router-dom";
 import { AuthProvider } from "./features/auth/context/AuthProvider";
+import { ToastProvider } from "./app/providers/ToastProvider";
+import { LanguageProvider } from "./app/providers/LanguageProvider";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <QueryProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </BrowserRouter>
-    </QueryProvider>
+    <LanguageProvider>
+      <ToastProvider>
+        <QueryProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </BrowserRouter>
+        </QueryProvider>
+      </ToastProvider>
+    </LanguageProvider>
   </StrictMode>,
 );

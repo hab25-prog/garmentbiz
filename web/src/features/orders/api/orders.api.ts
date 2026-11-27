@@ -1,5 +1,5 @@
 import { apiClient } from "../../../lib/api-client";
-import type { CreateOrderInput, Order, OrderMaterialEstimate, OrderMaterialEstimateSummary, OrderStatus } from "../types/orders.types";
+import type { CreateOrderInput, Order, OrderMaterialEstimate, OrderMaterialEstimateSummary, OrderPricingCalculation, OrderPricingResponse, OrderStatus } from "../types/orders.types";
 export const ordersApi = {
   getAll: () => apiClient.get<Order[]>("/api/orders"),
   getById: (id: string) => apiClient.get<Order>(`/api/orders/${encodeURIComponent(id)}`),
@@ -8,4 +8,6 @@ export const ordersApi = {
   getMaterialEstimates: (id: string) => apiClient.get<OrderMaterialEstimateSummary[]>(`/api/orders/${encodeURIComponent(id)}/material-estimates`),
   getMaterialEstimate: (id: string, estimateId: string) => apiClient.get<OrderMaterialEstimate>(`/api/orders/${encodeURIComponent(id)}/material-estimates/${encodeURIComponent(estimateId)}`),
   createMaterialEstimate: (id: string) => apiClient.post<OrderMaterialEstimate>(`/api/orders/${encodeURIComponent(id)}/material-estimates`, {}),
+  getPricing: (id: string) => apiClient.get<OrderPricingResponse>(`/api/orders/${encodeURIComponent(id)}/pricing`),
+  createPricing: (id: string, markupPercent?: string) => apiClient.post<OrderPricingCalculation>(`/api/orders/${encodeURIComponent(id)}/pricing`, markupPercent === undefined ? {} : { markupPercent }),
 };

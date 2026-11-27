@@ -165,7 +165,7 @@ test("membership middleware resolves only the verified active business", async (
       businessId: "business-a",
       role: "OWNER",
       business: { name: "Workshop A" },
-      user: { isActive: true },
+      user: { isActive: true, emailVerifiedAt: new Date() },
     } as never;
   }) as never);
 
@@ -222,6 +222,24 @@ test("inactive membership is forbidden even with an authenticated JWT", async (t
   });
 
   assert.equal(state.statusCode, 403);
+  assert.equal(nextCalled, false);
+});
+
+test("unverified users cannot access protected business routes with an existing access token", async (t) => {
+  const restore = stubMethod(prisma.membership, "findFirst", (async () => ({
+    id: "membership-a",
+    businessId: "business-a",
+    role: "OWNER",
+    business: { name: "Workshop A" },
+    user: { isActive: true, emailVerifiedAt: null },
+  })) as never);
+  t.after(restore);
+  const req = makeRequest({ auth: { userId: "user-a", membershipId: "membership-a", businessId: "business-a" } });
+  const { res, state } = makeResponse();
+  let nextCalled = false;
+  await requireActiveBusinessMembership(req, res, () => { nextCalled = true; });
+  assert.equal(state.statusCode, 403);
+  assert.equal((state.body as { message: string }).message, "Email verification required");
   assert.equal(nextCalled, false);
 });
 

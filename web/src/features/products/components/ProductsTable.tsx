@@ -1,3 +1,4 @@
+import { LocalizedText, translateCurrent } from "../../../app/providers/LanguageProvider";
 import { Package, Tag } from "lucide-react";
 import type { Product } from "../types/product.types";
 
@@ -19,17 +20,17 @@ export default function ProductsTable({ products, isLoading, onManageRequirement
     <div className="product-table-container">
       <table className="product-table">
         <thead>
-          <tr><th>Product</th><th>SKU</th><th>Category</th><th>Base selling price</th><th>Status</th><th>Material requirements</th><th>Action</th></tr>
+          <tr><th><LocalizedText text={"Product"} /></th><th><LocalizedText text={"SKU"} /></th><th><LocalizedText text={"Category"} /></th><th><LocalizedText text={"Base selling price"} /></th><th><LocalizedText text={"Status"} /></th><th><LocalizedText text={"Material requirements"} /></th><th><LocalizedText text={"Action"} /></th></tr>
         </thead>
         <tbody>
           {isLoading ? (
-            <tr><td colSpan={7} className="product-table-message" role="status">Loading products...</td></tr>
+            <tr><td colSpan={7} className="product-table-message" role="status"><LocalizedText text={"Loading products..."} /></td></tr>
           ) : products.length === 0 ? (
             <tr>
               <td colSpan={7} className="product-table-message">
                 <div className="product-empty-icon"><Package size={21} /></div>
-                <strong>No products found</strong>
-                <span>Try another search or add a product to the catalog.</span>
+                <strong><LocalizedText text={"No products found"} /></strong>
+                <span><LocalizedText text={"Try another search or add a product to the catalog."} /></span>
               </td>
             </tr>
           ) : products.map((product) => (
@@ -43,9 +44,9 @@ export default function ProductsTable({ products, isLoading, onManageRequirement
               <td>{product.sku || <span className="product-muted">—</span>}</td>
               <td>{product.category ? <span className="product-category"><Tag size={13} />{product.category}</span> : <span className="product-muted">—</span>}</td>
               <td><strong className="product-price">{formatEtbPrice(product.basePrice)}</strong></td>
-              <td><span className={`product-status ${product.isActive ? "active" : "inactive"}`}><span />{product.isActive ? "Active" : "Inactive"}</span></td>
-              <td>{product._count?.materialRequirements ? `${product._count.materialRequirements} configured` : <span className="product-muted">Not configured</span>}</td>
-              <td><button type="button" className="product-secondary-button" onClick={() => onManageRequirements(product)}>Manage BOM</button></td>
+              <td><span className={`product-status ${product.isActive ? "active" : "inactive"}`}><span />{translateCurrent(product.isActive ? "Active" : "Inactive")}</span></td>
+              <td>{product._count?.materialRequirements ? `${product._count.materialRequirements} configured` : <span className="product-muted"><LocalizedText text={"Not configured"} /></span>}</td>
+              <td><button type="button" className="product-secondary-button" onClick={() => onManageRequirements(product)}><LocalizedText text={"Manage BOM"} /></button></td>
             </tr>
           ))}
         </tbody>

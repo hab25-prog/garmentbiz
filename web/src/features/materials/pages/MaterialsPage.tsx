@@ -1,3 +1,5 @@
+import { LocalizedText, translateCurrent } from "../../../app/providers/LanguageProvider";
+import { formatAppDate } from "../../../app/utils/format-app-date";
 import { useEffect, useRef, useState } from "react";
 import { Plus, Search, RefreshCw } from "lucide-react";
 
@@ -126,19 +128,19 @@ export default function MaterialsPage() {
     <div className="materials-page">
       <div className="materials-heading">
         <div>
-          <h1>Materials</h1>
-          <p>Manage your raw materials and inventory records.</p>
+          <h1><LocalizedText text={"Materials"} /></h1>
+          <p><LocalizedText text={"Manage your raw materials and inventory records."} /></p>
         </div>
         <div className="materials-heading-actions">
-          <button className="secondary-button" onClick={() => setShowUnitsPanel((visible) => !visible)}>Manage Units</button>
-          <button className="primary-button" onClick={openCreateForm}><Plus size={18} /> Add Material</button>
+          <button className="secondary-button" onClick={() => setShowUnitsPanel((visible) => !visible)}><LocalizedText text={"Manage Units"} /></button>
+          <button className="primary-button" onClick={openCreateForm}><Plus size={18} /> <LocalizedText text={" Add Material"} /></button>
         </div>
       </div>
 
-      {materialsQuery.isError && <div className="materials-error" role="alert">{materialsQuery.error.message}</div>}
-      {formError && <div className="materials-error" role="alert">{formError}</div>}
-      {actionError && <div className="materials-error" role="alert">{actionError}</div>}
-      {successMessage && <div className="materials-success" role="status">{successMessage}</div>}
+      {materialsQuery.isError && <div className="materials-error" role="alert">{translateCurrent(materialsQuery.error.message)}</div>}
+      {formError && <div className="materials-error" role="alert">{translateCurrent(formError)}</div>}
+      {actionError && <div className="materials-error" role="alert">{translateCurrent(actionError)}</div>}
+      {successMessage && <div className="materials-success" role="status">{translateCurrent(successMessage)}</div>}
 
       {showUnitsPanel && (
         <div ref={unitManagementRef}>
@@ -158,15 +160,15 @@ export default function MaterialsPage() {
         </div>
       )}
 
-      {summaryQuery.isLoading && <div className="materials-loading">Loading inventory summary…</div>}
-      {summaryQuery.isError && <div className="materials-error" role="alert">{summaryQuery.error.message}</div>}
+      {summaryQuery.isLoading && <div className="materials-loading"><LocalizedText text={"Loading inventory summary…"} /></div>}
+      {summaryQuery.isError && <div className="materials-error" role="alert">{translateCurrent(summaryQuery.error.message)}</div>}
       {summaryQuery.data && (
         <section className="inventory-summary">
-          <article><span>Material items</span><strong>{summaryQuery.data.totalItems}</strong></article>
-          <article><span>Available stock</span><strong>{String(summaryQuery.data.totalAvailableStock)}</strong></article>
-          <article><span>Low stock</span><strong>{summaryQuery.data.lowStock.length}</strong></article>
-          <article><span>Out of stock</span><strong>{summaryQuery.data.outOfStock.length}</strong></article>
-          <article><span>Inventory valuation</span><strong>{new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(Number(summaryQuery.data.totalInventoryValue))}</strong></article>
+          <article><span><LocalizedText text={"Material items"} /></span><strong>{summaryQuery.data.totalItems}</strong></article>
+          <article><span><LocalizedText text={"Available stock"} /></span><strong>{String(summaryQuery.data.totalAvailableStock)}</strong></article>
+          <article><span><LocalizedText text={"Low stock"} /></span><strong>{summaryQuery.data.lowStock.length}</strong></article>
+          <article><span><LocalizedText text={"Out of stock"} /></span><strong>{summaryQuery.data.outOfStock.length}</strong></article>
+          <article><span><LocalizedText text={"Inventory valuation"} /></span><strong>{new Intl.NumberFormat("en-ET", { style: "currency", currency: "ETB" }).format(Number(summaryQuery.data.totalInventoryValue))}</strong></article>
         </section>
       )}
 
@@ -187,15 +189,15 @@ export default function MaterialsPage() {
       <div className="materials-toolbar">
         <div className="materials-search">
           <Search size={17} />
-          <input aria-label="Search materials" placeholder="Search materials..." value={search} onChange={(event) => setSearch(event.target.value)} />
+          <input aria-label={translateCurrent("Search materials")} placeholder={translateCurrent("Search materials...")} value={search} onChange={(event) => setSearch(event.target.value)} />
         </div>
-        <select aria-label="Material status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-          <option value="ACTIVE">Active materials</option>
-          <option value="ARCHIVED">Archived materials</option>
-          <option value="ALL">All materials</option>
+        <select aria-label={translateCurrent("Material status")} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+          <option value="ACTIVE"><LocalizedText text={"Active materials"} /></option>
+          <option value="ARCHIVED"><LocalizedText text={"Archived materials"} /></option>
+          <option value="ALL"><LocalizedText text={"All materials"} /></option>
         </select>
         <button className="refresh-button" onClick={() => void materialsQuery.refetch()} disabled={materialsQuery.isFetching}>
-          <RefreshCw size={16} /> {materialsQuery.isFetching ? "Refreshing..." : "Refresh"}
+          <RefreshCw size={16} /> {translateCurrent(materialsQuery.isFetching ? "Refreshing..." : "Refresh")}
         </button>
       </div>
 
@@ -206,33 +208,33 @@ export default function MaterialsPage() {
         onEdit={(material) => { updateMaterial.reset(); createMaterial.reset(); setEditingMaterial(material); setShowForm(true); setSuccessMessage(""); }}
         onToggleActive={(id, isActive) => void toggleActive(id, isActive)}
       />
-      <p className="materials-count">Showing {filteredMaterials.length} of {materials.length} materials</p>
+      <p className="materials-count"><LocalizedText text={"Showing "} />{filteredMaterials.length} <LocalizedText text={" of "} />{materials.length} <LocalizedText text={" materials"} /></p>
 
       <section className="inventory-history">
-        <div className="materials-heading"><div><h2>Stock movement history</h2><p>Recent inventory movements; balances remain derived from movement records.</p></div></div>
+        <div className="materials-heading"><div><h2><LocalizedText text={"Stock movement history"} /></h2><p><LocalizedText text={"Recent inventory movements; balances remain derived from movement records."} /></p></div></div>
         <div className="materials-toolbar">
-          <input aria-label="Search movements" placeholder="Search notes, references, material" value={movementSearch} onChange={(event) => setMovementSearch(event.target.value)} />
-          <select aria-label="Movement type" value={movementType} onChange={(event) => setMovementType(event.target.value)}>
-            <option value="">All movement types</option>
-            {["PURCHASE", "MANUAL_RECEIPT", "INVENTORY_ISSUE", "INVENTORY_RETURN", "INVENTORY_WASTE", "ADJUSTMENT_IN", "ADJUSTMENT_OUT", "PRODUCTION_ISSUE", "PRODUCTION_RETURN", "PRODUCTION_WASTE"].map((type) => <option key={type} value={type}>{type.replaceAll("_", " ")}</option>)}
+          <input aria-label={translateCurrent("Search movements")} placeholder={translateCurrent("Search notes, references, material")} value={movementSearch} onChange={(event) => setMovementSearch(event.target.value)} />
+          <select aria-label={translateCurrent("Movement type")} value={movementType} onChange={(event) => setMovementType(event.target.value)}>
+            <option value=""><LocalizedText text={"All movement types"} /></option>
+            {["PURCHASE", "MANUAL_RECEIPT", "INVENTORY_ISSUE", "INVENTORY_RETURN", "INVENTORY_WASTE", "ADJUSTMENT_IN", "ADJUSTMENT_OUT", "PRODUCTION_ISSUE", "PRODUCTION_RETURN", "PRODUCTION_WASTE"].map((type) => <option key={type} value={type}>{translateCurrent(type.replaceAll("_", " "))}</option>)}
           </select>
         </div>
-        {movementQuery.isLoading ? <p>Loading movements…</p> : movementQuery.isError ? <p className="materials-error" role="alert">{movementQuery.error.message}</p> : (
+        {movementQuery.isLoading ? <p><LocalizedText text={"Loading movements…"} /></p> : movementQuery.isError ? <p className="materials-error" role="alert">{translateCurrent(movementQuery.error.message)}</p> : (
           <div className="materials-table-wrap">
             <table className="materials-table">
-              <thead><tr><th>Date</th><th>Material</th><th>Type</th><th>Quantity</th><th>Reference</th><th>Notes</th></tr></thead>
+              <thead><tr><th><LocalizedText text={"Date"} /></th><th><LocalizedText text={"Material"} /></th><th><LocalizedText text={"Type"} /></th><th><LocalizedText text={"Quantity"} /></th><th><LocalizedText text={"Reference"} /></th><th><LocalizedText text={"Notes"} /></th></tr></thead>
               <tbody>
                 {(movementQuery.data ?? []).map((movement) => (
                   <tr key={movement.id}>
-                    <td>{new Date(movement.movementDate).toLocaleString()}</td>
+                    <td>{formatAppDate(movement.movementDate, { dateStyle: "short", timeStyle: "short" })}</td>
                     <td>{movement.material.name}</td>
-                    <td>{movement.movementType.replaceAll("_", " ")}</td>
+                    <td>{translateCurrent(movement.movementType.replaceAll("_", " "))}</td>
                     <td>{movement.quantity} {movement.material.unit.code}</td>
                     <td>{movement.referenceType ?? "—"} {movement.referenceId ?? ""}</td>
                     <td>{movement.notes ?? "—"}</td>
                   </tr>
                 ))}
-                {movementQuery.data?.length === 0 && <tr><td colSpan={6}>No movements match.</td></tr>}
+                {movementQuery.data?.length === 0 && <tr><td colSpan={6}><LocalizedText text={"No movements match."} /></td></tr>}
               </tbody>
             </table>
           </div>

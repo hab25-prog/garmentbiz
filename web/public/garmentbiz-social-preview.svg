@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title description">
+  <title id="title">GarmentBiz — Garment Business Management</title>
+  <desc id="description">GarmentBiz helps garment workshops manage orders, inventory, production, customers, and finances.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#111a45"/>
+      <stop offset="1" stop-color="#26377f"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#f2f5ff"/>
+    </linearGradient>
+    <linearGradient id="fabric" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#91a4ff"/>
+      <stop offset="1" stop-color="#6177e3"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <circle cx="1110" cy="24" r="260" fill="#5369d1" opacity=".14"/>
+  <circle cx="10" cy="640" r="260" fill="#8797ee" opacity=".10"/>
+
+  <g transform="translate(72 68)">
+    <rect width="58" height="58" rx="17" fill="#fff" opacity=".12"/>
+    <path d="M15 31a14 14 0 0 1 25-9M43 27a14 14 0 0 1-25 9" fill="none" stroke="#aebaff" stroke-width="7" stroke-linecap="round"/>
+    <path d="M39 21h5v5M19 37h-5v-5" fill="none" stroke="#ffbd57" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="76" y="39" fill="#fff" font-family="Inter, Arial, sans-serif" font-size="29" font-weight="700" letter-spacing="-.5">GarmentBiz</text>
+  </g>
+
+  <g font-family="Inter, Arial, sans-serif">
+    <text x="76" y="248" fill="#fff" font-size="55" font-weight="750" letter-spacing="-1.4">Garment business,</text>
+    <text x="76" y="311" fill="#fff" font-size="55" font-weight="750" letter-spacing="-1.4">organized.</text>
+    <text x="80" y="370" fill="#dbe2ff" font-size="21">Manage your workshop from order to production.</text>
+
+    <g transform="translate(80 425)" font-size="15" font-weight="600">
+      <rect width="118" height="38" rx="19" fill="#ffffff" opacity=".12"/><text x="18" y="25" fill="#f5f7ff">Orders</text>
+      <rect x="130" width="132" height="38" rx="19" fill="#ffffff" opacity=".12"/><text x="148" y="25" fill="#f5f7ff">Inventory</text>
+      <rect x="274" width="132" height="38" rx="19" fill="#ffffff" opacity=".12"/><text x="292" y="25" fill="#f5f7ff">Production</text>
+      <rect x="418" width="122" height="38" rx="19" fill="#ffffff" opacity=".12"/><text x="436" y="25" fill="#f5f7ff">Finances</text>
+    </g>
+  </g>
+
+  <g transform="translate(665 91)">
+    <rect x="-5" y="8" width="467" height="453" rx="29" fill="#080e2c" opacity=".26"/>
+    <rect width="457" height="445" rx="25" fill="url(#card)"/>
+    <rect width="457" height="70" rx="25" fill="#fff"/>
+    <path d="M0 45v25h457V45" fill="#fff"/>
+    <circle cx="34" cy="35" r="6" fill="#cad2f1"/><circle cx="55" cy="35" r="6" fill="#cad2f1"/><circle cx="76" cy="35" r="6" fill="#cad2f1"/>
+    <text x="34" y="111" fill="#1c2858" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">Workshop overview</text>
+    <text x="34" y="137" fill="#78819f" font-family="Inter, Arial, sans-serif" font-size="12">Orders · materials · production</text>
+
+    <g font-family="Inter, Arial, sans-serif">
+      <rect x="30" y="164" width="188" height="101" rx="13" fill="#fff" stroke="#e7eaf5"/>
+      <text x="47" y="190" fill="#737d9e" font-size="12">ORDERS</text>
+      <path d="M49 218h148M49 232h105M49 246h124" stroke="#c9d1e9" stroke-width="7" stroke-linecap="round"/>
+      <rect x="237" y="164" width="190" height="101" rx="13" fill="#fff" stroke="#e7eaf5"/>
+      <text x="254" y="190" fill="#737d9e" font-size="12">MATERIALS</text>
+      <rect x="255" y="211" width="18" height="30" rx="5" fill="#8899ed"/><rect x="281" y="219" width="18" height="22" rx="5" fill="#f2b84d"/><rect x="307" y="203" width="18" height="38" rx="5" fill="#45b993"/><rect x="333" y="214" width="18" height="27" rx="5" fill="#df7890"/>
+
+      <rect x="30" y="283" width="397" height="129" rx="13" fill="#fff" stroke="#e7eaf5"/>
+      <text x="49" y="310" fill="#737d9e" font-size="12">PRODUCTION WORKFLOW</text>
+      <path d="M63 352h304" stroke="#dce2f2" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="82" cy="352" r="13" fill="#5268d1"/><circle cx="215" cy="352" r="13" fill="#7185e4"/><circle cx="348" cy="352" r="13" fill="#f1b649"/>
+      <text x="55" y="385" fill="#66718f" font-size="11">Order</text><text x="183" y="385" fill="#66718f" font-size="11">Materials</text><text x="326" y="385" fill="#66718f" font-size="11">Finished</text>
+    </g>
+  </g>
+
+  <text x="80" y="570" fill="#aab5e8" font-family="Inter, Arial, sans-serif" font-size="14">Tools for small garment workshops in Ethiopia</text>
+</svg>

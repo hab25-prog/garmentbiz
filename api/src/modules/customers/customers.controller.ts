@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { assertRequestedBusiness } from "../../middleware/auth.middleware.js";
-import { createCustomer, getCustomers } from "./customers.service.js";
+import { createCustomer, CustomerReceivablesError, getCustomerReceivables, getCustomers } from "./customers.service.js";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const optionalStringFields = ["phone", "email", "address", "notes"] as const;
@@ -88,5 +88,25 @@ export async function getCustomersController(req: Request, res: Response) {
       success: false,
       message: "Failed to retrieve customers",
     });
+  }
+}
+
+export async function getCustomerReceivablesController(req: Request, res: Response) {
+  try {
+    const businessId = assertRequestedBusiness(req, res, undefined);
+    if (!businessId) return;
+    if (typeof req.params.customerId !== "string" || !req.params.customerId.trim()) {
+      return res.status(400).json({ success: false, message: "Invalid customer ID" });
+    }
+
+    const receivables = await getCustomerReceivables(businessId, req.params.customerId);
+    if (!receivables) return res.status(404).json({ success: false, message: "Customer not found" });
+    return res.status(200).json({ success: true, data: receivables });
+  } catch (error) {
+    if (error instanceof CustomerReceivablesError) {
+      return res.status(error.statusCode).json({ success: false, message: error.message });
+    }
+    console.error("Get customer receivables error:", error);
+    return res.status(500).json({ success: false, message: "Failed to retrieve customer receivables" });
   }
 }

@@ -7,14 +7,19 @@ import {
   getCsrfTokenController,
   loginController,
   registerController,
+  resendVerificationController,
+  verifyEmailController,
 } from "../src/modules/auth/auth.controller.js";
 import { requireCsrf } from "../src/middleware/auth.middleware.js";
 import authRoutes from "../src/modules/auth/auth.routes.js";
 import { DEFAULT_MEASUREMENT_UNITS } from "../src/modules/units/units.service.js";
+import { verificationEmailDelivery } from "../src/modules/auth/email.service.js";
+import { verificationRateLimit, verificationResendRateLimit } from "../src/modules/auth/auth.rate-limit.js";
 
-function request(body: unknown, origin = "http://localhost:5173"): Request {
+function request(body: unknown, origin = "http://localhost:5173", query: Record<string, unknown> = {}): Request {
   return {
     body,
+    query,
     headers: {},
     get(name: string) {
       if (name.toLowerCase() === "origin") return origin;
@@ -71,6 +76,19 @@ test("login rejects malformed credentials before database access", async () => {
   assert.deepEqual(state.headers, []);
 });
 
+test("registration accepts only the supported language values", async () => {
+  const { res, state } = response();
+  await registerController(request({
+    fullName: "Language Test",
+    email: "language@example.test",
+    password: "valid registration test password",
+    businessName: "Language Workshop",
+    language: "fr",
+  }), res);
+  assert.equal(state.statusCode, 400);
+  assert.deepEqual(state.body, { success: false, message: "Language must be either en or am" });
+});
+
 test("duplicate registration returns a generic response without saying the email is registered", async (t) => {
   const restore = stubMethod(prisma, "$transaction", (async () => {
     throw new Prisma.PrismaClientKnownRequestError("Unique constraint", {
@@ -87,8 +105,8 @@ test("duplicate registration returns a generic response without saying the email
     businessName: "Test Workshop",
   }), res);
 
-  assert.equal(state.statusCode, 409);
-  assert.equal((state.body as { message: string }).message, "Unable to register with these details. Sign in if you already have an account.");
+  assert.equal(state.statusCode, 202);
+  assert.equal((state.body as { message: string }).message, "If the address is eligible, verification instructions will be sent. If you do not receive them, you can request another email.");
   assert.equal(JSON.stringify(state.body).toLowerCase().includes("already exists"), false);
   assert.deepEqual(state.headers, []);
 });
@@ -109,13 +127,49 @@ test("CSRF middleware rejects state changes without valid anti-CSRF headers", ()
   assert.equal(nextCalled, false);
 });
 
-test("POST /api/auth/register provisions isolated default units through its real controller flow", async (t) => {
-  const originalSecret = process.env.JWT_SECRET;
-  process.env.JWT_SECRET = "controller-test-jwt-secret-with-at-least-32-bytes";
-  t.after(() => {
-    if (originalSecret === undefined) delete process.env.JWT_SECRET;
-    else process.env.JWT_SECRET = originalSecret;
+test("verification endpoints are CSRF protected and rate limited", () => {
+  const routes = (authRoutes as unknown as {
+    stack: Array<{ route?: { path: string; methods: Record<string, boolean>; stack: Array<{ handle: unknown }> } }>;
+  }).stack.flatMap((layer) => layer.route ? [layer.route] : []);
+  for (const [path, limiter, controller] of [
+    ["/verify-email", verificationRateLimit, verifyEmailController],
+    ["/resend-verification", verificationResendRateLimit, resendVerificationController],
+  ] as const) {
+    const route = routes.find((item) => item.path === path && item.methods.post);
+    assert.ok(route);
+    assert.ok(route.stack.some((layer) => layer.handle === limiter));
+    assert.ok(route.stack.some((layer) => layer.handle === requireCsrf));
+    assert.ok(route.stack.some((layer) => layer.handle === controller));
+  }
+});
+
+test("verification requires a token in the request body", async () => {
+  const { res, state } = response();
+  await verifyEmailController(request(undefined), res);
+  assert.equal(state.statusCode, 400);
+  assert.deepEqual(state.body, { success: false, message: "A valid verification token is required" });
+});
+
+test("verification rejects tokens supplied in the API query string", async () => {
+  const { res, state } = response();
+  await verifyEmailController(request({ token: "body-token" }, "http://localhost:5173", { token: "query-token" }), res);
+  assert.equal(state.statusCode, 400);
+  assert.deepEqual(state.body, { success: false, message: "Submit the verification token in the request body" });
+});
+
+test("resend response is generic when no matching account exists", async (t) => {
+  const restore = stubMethod(prisma.user, "findUnique", (async () => null) as never);
+  t.after(restore);
+  const { res, state } = response();
+  await resendVerificationController(request({ email: "unknown@example.test" }), res);
+  assert.equal(state.statusCode, 202);
+  assert.deepEqual(state.body, {
+    success: true,
+    message: "If the address is eligible, verification instructions will be sent. If you do not receive them, you can request another email.",
   });
+});
+
+test("POST /api/auth/register provisions default units and verification record without issuing a session", async (t) => {
 
   const routes = (authRoutes as unknown as {
     stack: Array<{ route?: { path: string; methods: Record<string, boolean>; stack: Array<{ handle: unknown }> } }>;
@@ -127,7 +181,9 @@ test("POST /api/auth/register provisions isolated default units through its real
 
   const persistedUnits: Array<{ businessId: string; name: string; code: string }> = [];
   let registrationIndex = 0;
-  let activeMembership: { id: string; businessId: string; userId: string } | undefined;
+  let sessionCreated = false;
+  let verificationTokenCreated = false;
+  const restoreEmail = stubMethod(verificationEmailDelivery, "send", (async () => undefined) as never);
   const restoreTransaction = stubMethod(prisma, "$transaction", (async (callback: (transaction: unknown) => Promise<unknown>) => {
     const index = ++registrationIndex;
     const businessId = `registered-business-${index}`;
@@ -145,21 +201,17 @@ test("POST /api/auth/register provisions isolated default units through its real
           return { count: args.data.length };
         },
       },
-      membership: { create: async () => {
-        activeMembership = { id: membershipId, businessId, userId };
-        return { id: membershipId };
+      membership: { create: async () => ({ id: membershipId }) },
+      session: { create: async () => { sessionCreated = true; return { id: `session-${index}` }; } },
+      emailVerificationToken: { create: async (args: { data: { tokenHash: string } }) => {
+        verificationTokenCreated = true;
+        assert.match(args.data.tokenHash, /^[a-f0-9]{64}$/);
+        return { id: `verification-${index}` };
       } },
-      session: { create: async () => ({ id: `session-${index}` }) },
     };
     return callback(transaction);
   }) as never);
-  const restoreMembership = stubMethod(prisma.membership, "findFirst", (async () => ({
-    id: activeMembership?.id,
-    role: "OWNER",
-    business: { id: activeMembership?.businessId, name: `Workshop ${registrationIndex}` },
-    user: { id: activeMembership?.userId, fullName: "Test Owner", email: `owner-${registrationIndex}@example.test` },
-  })) as never);
-  t.after(restoreMembership);
+  t.after(restoreEmail);
   t.after(restoreTransaction);
 
   for (let index = 1; index <= 2; index += 1) {
@@ -170,10 +222,14 @@ test("POST /api/auth/register provisions isolated default units through its real
       password: "valid registration test password",
       businessName: `Workshop ${index}`,
     }), res);
-    assert.equal(state.statusCode, 201);
+    assert.equal(state.statusCode, 202);
+    assert.deepEqual(state.headers, []);
+    assert.equal((state.body as { data?: unknown }).data, undefined);
   }
 
   assert.equal(persistedUnits.length, DEFAULT_MEASUREMENT_UNITS.length * 2);
+  assert.equal(verificationTokenCreated, true);
+  assert.equal(sessionCreated, false);
   for (const businessId of ["registered-business-1", "registered-business-2"]) {
     const units = persistedUnits.filter((unit) => unit.businessId === businessId);
     assert.deepEqual(units.map(({ name, code }) => ({ name, code })), DEFAULT_MEASUREMENT_UNITS);
@@ -181,12 +237,6 @@ test("POST /api/auth/register provisions isolated default units through its real
 });
 
 test("registration returns failure if default-unit creation fails inside the transaction", async (t) => {
-  const originalSecret = process.env.JWT_SECRET;
-  process.env.JWT_SECRET = "controller-test-jwt-secret-with-at-least-32-bytes";
-  t.after(() => {
-    if (originalSecret === undefined) delete process.env.JWT_SECRET;
-    else process.env.JWT_SECRET = originalSecret;
-  });
 
   let sessionCreated = false;
   const restore = stubMethod(prisma, "$transaction", (async (callback: (transaction: unknown) => Promise<unknown>) => callback({

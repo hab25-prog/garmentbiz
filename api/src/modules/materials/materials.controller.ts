@@ -1,6 +1,8 @@
 import type { Request, Response } from "express";
 import type { MaterialType, StockMovementType } from "../../../generated/prisma/client.js";
 import { assertRequestedBusiness } from "../../middleware/auth.middleware.js";
+import { redactFinancialFields } from "../../authorization/financial-fields.js";
+import { roleHasPermission } from "../../authorization/permissions.js";
 import { createMaterial, getMaterials, updateMaterial, getInventorySummary, getStockMovements } from "./materials.service.js";
 
 function isUniqueConstraintError(error: unknown): boolean {
@@ -155,7 +157,7 @@ export async function updateMaterialController(req: Request, res: Response) {
     return res.status(500).json({ success: false, message: "Failed to update material" });
   }
 }
-export async function inventorySummaryController(req:Request,res:Response){try{const businessId=assertRequestedBusiness(req,res,req.query.businessId);if(!businessId)return;return res.json({success:true,data:await getInventorySummary(businessId)});}catch(error){console.error("Inventory summary error:",error);return res.status(500).json({success:false,message:"Failed to retrieve inventory summary"});}}
+export async function inventorySummaryController(req:Request,res:Response){try{const businessId=assertRequestedBusiness(req,res,req.query.businessId);if(!businessId)return;const data=await getInventorySummary(businessId);return res.json({success:true,data:roleHasPermission(req.businessPrincipal?.role,"inventory.costs.read")?data:redactFinancialFields(data)});}catch(error){console.error("Inventory summary error:",error);return res.status(500).json({success:false,message:"Failed to retrieve inventory summary"});}}
 export async function stockMovementsController(req: Request, res: Response) {
   try {
     const businessId = assertRequestedBusiness(req, res, req.query.businessId);
@@ -169,7 +171,8 @@ export async function stockMovementsController(req: Request, res: Response) {
       ...(typeof req.query.type === "string" ? { type: req.query.type as StockMovementType } : {}),
       ...(typeof req.query.search === "string" ? { search: req.query.search } : {}),
     };
-    return res.json({ success: true, data: await getStockMovements(businessId, filters) });
+    const movements = await getStockMovements(businessId, filters);
+    return res.json({ success: true, data: roleHasPermission(req.businessPrincipal?.role,"inventory.costs.read")?movements:redactFinancialFields(movements) });
   } catch (error) {
     console.error("Stock history error:", error);
     return res.status(500).json({ success: false, message: "Failed to retrieve stock movements" });

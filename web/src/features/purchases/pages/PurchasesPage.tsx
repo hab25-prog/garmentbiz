@@ -1,3 +1,4 @@
+import { LocalizedText, translateCurrent } from "../../../app/providers/LanguageProvider";
 import { useMemo, useState } from "react";
 import PurchaseForm from "../components/PurchaseForm";
 import PurchasesTable from "../components/PurchasesTable";
@@ -7,9 +8,11 @@ import {
   useReceivePurchase,
 } from "../hooks/usePurchases";
 import type { CreatePurchaseInput } from "../types/purchase.types";
+import { useToast } from "../../../app/providers/toast-context";
 import "./Purchases.css";
 
 export default function PurchasesPage() {
+  const toast = useToast();
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [receivingPurchaseId, setReceivingPurchaseId] = useState<string | null>(
@@ -39,9 +42,9 @@ export default function PurchasesPage() {
     try {
       await createMutation.mutateAsync(input);
       setShowForm(false);
-      alert("Purchase created successfully.");
+      toast.success("Purchase created successfully.");
     } catch (error) {
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Failed to create purchase.",
       );
     }
@@ -52,9 +55,9 @@ export default function PurchasesPage() {
 
     try {
       await receiveMutation.mutateAsync(purchaseId);
-      alert("Purchase received successfully. Inventory has been updated.");
+      toast.success("Purchase received successfully. Inventory has been updated.");
     } catch (error) {
-      alert(
+      toast.error(
         error instanceof Error ? error.message : "Failed to receive purchase.",
       );
     } finally {
@@ -74,37 +77,37 @@ export default function PurchasesPage() {
     <div className="purchases-page">
       <div className="purchases-page-header">
         <div>
-          <h1>Purchases</h1>
-          <p>Manage supplier purchases and incoming materials.</p>
+          <h1><LocalizedText text={"Purchases"} /></h1>
+          <p><LocalizedText text={"Manage supplier purchases and incoming materials."} /></p>
         </div>
 
         <button
           type="button"
           onClick={() => setShowForm((current) => !current)}>
-          {showForm ? "Close Form" : "+ New Purchase"}
+          {translateCurrent(showForm ? "Close Form" : "+ New Purchase")}
         </button>
       </div>
 
       <div className="purchase-summary">
         <div className="purchase-summary-card">
-          <span>Total Purchases</span>
+          <span><LocalizedText text={"Total Purchases"} /></span>
           <strong>{purchases.length}</strong>
         </div>
 
         <div className="purchase-summary-card">
-          <span>Draft Purchases</span>
+          <span><LocalizedText text={"Draft Purchases"} /></span>
           <strong>{draftCount}</strong>
         </div>
 
         <div className="purchase-summary-card">
-          <span>Received Purchases</span>
+          <span><LocalizedText text={"Received Purchases"} /></span>
           <strong>{receivedCount}</strong>
         </div>
       </div>
 
       {showForm && (
         <section className="purchase-form-card">
-          <h2>Create New Purchase</h2>
+          <h2><LocalizedText text={"Create New Purchase"} /></h2>
 
           <PurchaseForm
             onSubmit={handleCreate}
@@ -117,34 +120,33 @@ export default function PurchasesPage() {
       <section className="purchases-list-section">
         <div className="purchases-list-header">
           <div>
-            <h2>Purchase Records</h2>
-            <p>View and receive your supplier purchases.</p>
+            <h2><LocalizedText text={"Purchase Records"} /></h2>
+            <p><LocalizedText text={"View and receive your supplier purchases."} /></p>
           </div>
 
           <button
             type="button"
             onClick={() => purchasesQuery.refetch()}
             disabled={purchasesQuery.isFetching}>
-            {purchasesQuery.isFetching ? "Refreshing..." : "Refresh"}
+            {translateCurrent(purchasesQuery.isFetching ? "Refreshing..." : "Refresh")}
           </button>
         </div>
 
         <input
           type="search"
           className="purchase-search"
-          placeholder="Search by purchase number, supplier, or status..."
+          placeholder={translateCurrent("Search by purchase number, supplier, or status...")}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
 
         {purchasesQuery.isLoading ? (
-          <p>Loading purchases...</p>
+          <p><LocalizedText text={"Loading purchases..."} /></p>
         ) : purchasesQuery.isError ? (
           <div className="purchase-error">
-            <p>Failed to load purchases.</p>
+            <p><LocalizedText text={"Failed to load purchases."} /></p>
             <button type="button" onClick={() => purchasesQuery.refetch()}>
-              Try Again
-            </button>
+              <LocalizedText text={"\n              Try Again\n            "} /></button>
           </div>
         ) : (
           <PurchasesTable

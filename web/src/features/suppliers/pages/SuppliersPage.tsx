@@ -8,8 +8,10 @@ import SuppliersTable from "../components/SuppliersTable";
 import type { CreateSupplierInput } from "../types/supplier.types";
 
 import "./Suppliers.css";
+import { useLanguage } from "../../../app/providers/LanguageProvider";
 
 export default function SuppliersPage() {
+  const { t } = useLanguage();
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -46,8 +48,8 @@ export default function SuppliersPage() {
     <div className="materials-page suppliers-page">
       <div className="materials-heading">
         <div>
-          <h1>Suppliers</h1>
-          <p>Manage your fabric, polymer, accessories, and other suppliers.</p>
+          <h1>{t("Suppliers")}</h1>
+          <p>{t("Manage your fabric, polymer, accessories, and other suppliers.")}</p>
         </div>
 
         <button
@@ -55,13 +57,13 @@ export default function SuppliersPage() {
           disabled={createSupplier.isPending}
           onClick={() => { createSupplier.reset(); setSuccessMessage(""); setShowForm((current) => !current); }}>
           <Plus size={18} />
-          Add Supplier
+          {t("Add Supplier")}
         </button>
       </div>
 
-      {errorMessage && <div className="materials-error" role="alert">{errorMessage}</div>}
-      {successMessage && <div className="materials-success" role="status">{successMessage}</div>}
-      {suppliersQuery.isLoading && <div className="materials-loading">Loading suppliers…</div>}
+      {errorMessage && <div className="materials-error" role="alert">{t(errorMessage)}</div>}
+      {successMessage && <div className="materials-success" role="status">{t(successMessage)}</div>}
+      {suppliersQuery.isLoading && <div className="materials-loading">{t("Loading suppliers…")}</div>}
 
       {showForm && (
         <SupplierForm
@@ -75,7 +77,7 @@ export default function SuppliersPage() {
         <div className="materials-search">
           <Search size={17} />
           <input
-            placeholder="Search suppliers..."
+            placeholder={t("Search suppliers...")}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
           />
@@ -86,14 +88,14 @@ export default function SuppliersPage() {
           onClick={() => void suppliersQuery.refetch()}
           disabled={suppliersQuery.isFetching}>
           <RefreshCw size={16} />
-          {suppliersQuery.isFetching ? "Refreshing..." : "Refresh"}
+          {t(suppliersQuery.isFetching ? "Refreshing..." : "Refresh")}
         </button>
       </div>
 
       <SuppliersTable suppliers={filteredSuppliers} isLoading={suppliersQuery.isLoading} />
 
       <p className="materials-count">
-        Showing {filteredSuppliers.length} of {suppliers.length} suppliers
+        {t("Showing")} {filteredSuppliers.length} {t("of")} {suppliers.length} {t("suppliers")}
       </p>
     </div>
   );

@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useEffect,
   useState,
   type ReactNode,
 } from "react";
@@ -19,9 +20,11 @@ import type {
   AuthenticatedProfile,
   AuthenticatedSession,
   LoginInput,
+  RegistrationAcceptedResponse,
   RegisterInput,
 } from "../types/auth.types";
 import { clearAccessToken } from "../../../lib/access-token";
+import { useLanguage } from "../../../app/providers/LanguageProvider";
 
 export type AuthenticationStatus = "initializing" | "authenticated" | "unauthenticated";
 
@@ -31,11 +34,12 @@ interface AuthContextValue {
   membership: AuthenticatedProfile["membership"] | null;
   isAuthenticated: boolean;
   login(input: LoginInput): Promise<AuthenticatedSession>;
-  register(input: RegisterInput): Promise<AuthenticatedSession>;
+  register(input: RegisterInput): Promise<RegistrationAcceptedResponse>;
   logout(): Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+// eslint-disable-next-line react-refresh/only-export-components
 export const authSessionQueryKey = ["auth-session"] as const;
 
 async function restoreSession(): Promise<AuthenticatedProfile | null> {
@@ -53,6 +57,7 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
+  const { setLanguage } = useLanguage();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [loggedOut, setLoggedOut] = useState(false);
@@ -65,6 +70,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     refetchOnWindowFocus: false,
   });
   const profile = sessionQuery.data ?? null;
+  useEffect(() => {
+    if (profile?.user.language) setLanguage(profile.user.language);
+  }, [profile?.user.language, setLanguage]);
   const status: AuthenticationStatus = sessionQuery.isPending && !loggedOut
     ? "initializing"
     : profile
@@ -88,9 +96,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, [acceptSession]);
 
   const register = useCallback(async (input: RegisterInput) => {
-    const session = await registerWithApi(input);
-    return acceptSession(session);
-  }, [acceptSession]);
+    return registerWithApi(input);
+  }, []);
 
   const logout = useCallback(async () => {
     try {
@@ -117,6 +124,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) throw new Error("useAuth must be used within AuthProvider");

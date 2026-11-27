@@ -15,6 +15,10 @@ import authRoutes from "./modules/auth/auth.routes.js";
 import ordersRoutes from "./modules/orders/orders.routes.js";
 import inventoryRoutes from "./modules/inventory/inventory.routes.js";
 import productionRoutes from "./modules/production/production.routes.js";
+import invoicesRoutes from "./modules/invoices/invoices.routes.js";
+import expensesRoutes from "./modules/expenses/expenses.routes.js";
+import dashboardRoutes from "./modules/dashboard/dashboard.routes.js";
+import reportsRoutes from "./modules/reports/reports.routes.js";
 import {
   assertJwtConfiguration,
   getAllowedOrigins,
@@ -71,6 +75,10 @@ app.use("/api/units", unitsRoutes);
 app.use("/api/orders", ordersRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/production", productionRoutes);
+app.use("/api/invoices", invoicesRoutes);
+app.use("/api/expenses", expensesRoutes);
+app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/reports", reportsRoutes);
 
 app.get("/api/health", async (_req, res) => {
   try {

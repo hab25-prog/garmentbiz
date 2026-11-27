@@ -1,5 +1,7 @@
+import { LocalizedText, translateCurrent } from "../../../app/providers/LanguageProvider";
 import { BriefcaseBusiness, CalendarDays, Phone, Users } from "lucide-react";
 import type { Employee } from "../types/employee.types";
+import { formatAppDate } from "../../../app/utils/format-app-date";
 
 interface EmployeesTableProps {
   employees: Employee[];
@@ -11,7 +13,7 @@ function formatHireDate(value: string | null): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "—"
-    : new Intl.DateTimeFormat("en-ET", { dateStyle: "medium", timeZone: "Africa/Addis_Ababa" }).format(date);
+    : formatAppDate(date, { dateStyle: "medium", timeZone: "Africa/Addis_Ababa" });
 }
 
 function formatMonthlySalary(value: string): string {
@@ -26,23 +28,23 @@ export default function EmployeesTable({ employees, isLoading }: EmployeesTableP
       <table className="employee-table">
         <thead>
           <tr>
-            <th>Employee</th>
-            <th>Phone</th>
-            <th>Position</th>
-            <th>Hire date</th>
-            <th>Monthly salary <span className="employee-readonly-label">READ ONLY</span></th>
-            <th>Status</th>
+            <th><LocalizedText text={"Employee"} /></th>
+            <th><LocalizedText text={"Phone"} /></th>
+            <th><LocalizedText text={"Position"} /></th>
+            <th><LocalizedText text={"Hire date"} /></th>
+            <th><LocalizedText text={"Monthly salary "} /><span className="employee-readonly-label"><LocalizedText text={"READ ONLY"} /></span></th>
+            <th><LocalizedText text={"Status"} /></th>
           </tr>
         </thead>
         <tbody>
           {isLoading ? (
-            <tr><td colSpan={6} className="employee-table-message" role="status">Loading employees...</td></tr>
+            <tr><td colSpan={6} className="employee-table-message" role="status"><LocalizedText text={"Loading employees..."} /></td></tr>
           ) : employees.length === 0 ? (
             <tr>
               <td colSpan={6} className="employee-table-message">
                 <div className="employee-empty-icon"><Users size={21} /></div>
-                <strong>No employees found</strong>
-                <span>Try a different search or register an employee.</span>
+                <strong><LocalizedText text={"No employees found"} /></strong>
+                <span><LocalizedText text={"Try a different search or register an employee."} /></span>
               </td>
             </tr>
           ) : employees.map((employee) => (
@@ -52,7 +54,7 @@ export default function EmployeesTable({ employees, isLoading }: EmployeesTableP
                   <span className="employee-avatar" aria-hidden="true">{employee.fullName.trim().charAt(0).toUpperCase()}</span>
                   <div>
                     <strong>{employee.fullName}</strong>
-                    <span>{employee.employeeCode || "No employee code"}</span>
+                    <span>{employee.employeeCode || translateCurrent("No employee code")}</span>
                   </div>
                 </div>
               </td>
@@ -62,7 +64,7 @@ export default function EmployeesTable({ employees, isLoading }: EmployeesTableP
               <td><span className="employee-salary-readonly">{formatMonthlySalary(employee.monthlySalary)}</span></td>
               <td>
                 <span className={`employee-status ${employee.isActive ? "active" : "inactive"}`}>
-                  <span />{employee.isActive ? "Active" : "Inactive"}
+                  <span />{translateCurrent(employee.isActive ? "Active" : "Inactive")}
                 </span>
               </td>
             </tr>

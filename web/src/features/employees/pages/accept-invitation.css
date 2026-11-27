@@ -1,0 +1,6 @@
+.invitation-password-hint {
+  margin: 0;
+  color: var(--auth-muted, #7b8496);
+  font-size: 13px;
+  line-height: 1.55;
+}

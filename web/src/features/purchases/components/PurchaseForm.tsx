@@ -1,3 +1,4 @@
+import { LocalizedText, translateCurrent } from "../../../app/providers/LanguageProvider";
 
 import { useState } from "react";
 import type {
@@ -29,6 +30,7 @@ export default function PurchaseForm({
 
   const [supplierId, setSupplierId] = useState("");
   const [notes, setNotes] = useState("");
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [items, setItems] = useState<CreatePurchaseItemInput[]>([
     { ...emptyItem },
   ]);
@@ -82,6 +84,7 @@ export default function PurchaseForm({
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setValidationError(null);
 
     if (!supplierId || items.length === 0) {
       return;
@@ -99,14 +102,14 @@ export default function PurchaseForm({
     );
 
     if (!validItems) {
-      alert("Please complete every material item with valid positive values.");
+      setValidationError("Please complete every material item with valid positive values.");
       return;
     }
 
     const materialIds = items.map((item) => item.materialId);
 
     if (new Set(materialIds).size !== materialIds.length) {
-      alert("Each material can only appear once in a purchase.");
+      setValidationError("Each material can only appear once in a purchase.");
       return;
     }
 
@@ -119,17 +122,17 @@ export default function PurchaseForm({
 
   return (
     <form className="purchase-form" onSubmit={handleSubmit}>
+      {validationError && <p className="purchase-validation-error" role="alert">{translateCurrent(validationError)}</p>}
       <div className="purchase-form-section">
-        <h3>Purchase Information</h3>
+        <h3><LocalizedText text={"Purchase Information"} /></h3>
 
         <label>
-          Supplier *
-          <select
+          <LocalizedText text={"\n          Supplier *\n          "} /><select
             value={supplierId}
             onChange={(event) => setSupplierId(event.target.value)}
             required
           >
-            <option value="">Select supplier</option>
+            <option value=""><LocalizedText text={"Select supplier"} /></option>
             {suppliers.map((supplier) => (
               <option key={supplier.id} value={supplier.id}>
                 {supplier.name}
@@ -139,22 +142,20 @@ export default function PurchaseForm({
         </label>
 
         <label>
-          Notes
-          <textarea
+          <LocalizedText text={"\n          Notes\n          "} /><textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
             rows={2}
-            placeholder="Optional purchase notes"
+            placeholder={translateCurrent("Optional purchase notes")}
           />
         </label>
       </div>
 
       <div className="purchase-form-section">
         <div className="purchase-section-heading">
-          <h3>Purchase Items</h3>
+          <h3><LocalizedText text={"Purchase Items"} /></h3>
           <button type="button" onClick={addItem}>
-            + Add Item
-          </button>
+            <LocalizedText text={"\n            + Add Item\n          "} /></button>
         </div>
 
         {items.map((item, index) => {
@@ -168,15 +169,14 @@ export default function PurchaseForm({
           return (
             <div className="purchase-item-row" key={index}>
               <label>
-                Material *
-                <select
+                <LocalizedText text={"\n                Material *\n                "} /><select
                   value={item.materialId}
                   onChange={(event) =>
                     updateItem(index, "materialId", event.target.value)
                   }
                   required
                 >
-                  <option value="">Select material</option>
+                  <option value=""><LocalizedText text={"Select material"} /></option>
                   {materials.map((material) => (
                     <option key={material.id} value={material.id}>
                       {material.name} ({material.unit.code})
@@ -187,14 +187,13 @@ export default function PurchaseForm({
 
               {selectedMaterial && (
                 <small>
-                  Unit: {selectedMaterial.unit.name} (
+                  <LocalizedText text={"\n                  Unit: "} />{selectedMaterial.unit.name} (
                   {selectedMaterial.unit.code})
                 </small>
               )}
 
               <label>
-                Quantity *
-                <input
+                <LocalizedText text={"\n                Quantity *\n                "} /><input
                   type="number"
                   min="0.001"
                   step="0.001"
@@ -202,14 +201,13 @@ export default function PurchaseForm({
                   onChange={(event) =>
                     updateItem(index, "quantity", event.target.value)
                   }
-                  placeholder="e.g. 100"
+                  placeholder={translateCurrent("e.g. 100")}
                   required
                 />
               </label>
 
               <label>
-                Unit Cost (ETB) *
-                <input
+                <LocalizedText text={"\n                Unit Cost (ETB) *\n                "} /><input
                   type="number"
                   min="0.01"
                   step="0.01"
@@ -217,13 +215,13 @@ export default function PurchaseForm({
                   onChange={(event) =>
                     updateItem(index, "unitCost", event.target.value)
                   }
-                  placeholder="e.g. 50"
+                  placeholder={translateCurrent("e.g. 50")}
                   required
                 />
               </label>
 
               <p>
-                Line Total:{" "}
+                <LocalizedText text={"\n                Line Total:"} />{" "}
                 {formatMoney(Number.isFinite(lineTotal) ? lineTotal : 0)}
               </p>
 
@@ -232,8 +230,7 @@ export default function PurchaseForm({
                   type="button"
                   onClick={() => removeItem(index)}
                 >
-                  Remove
-                </button>
+                  <LocalizedText text={"\n                  Remove\n                "} /></button>
               )}
             </div>
           );
@@ -241,16 +238,16 @@ export default function PurchaseForm({
       </div>
 
       <div className="purchase-subtotal">
-        <span>Purchase Subtotal</span>
+        <span><LocalizedText text={"Purchase Subtotal"} /></span>
         <strong>{formatMoney(subtotal)}</strong>
       </div>
 
       {suppliers.length === 0 && (
-        <p>Please create a supplier before making a purchase.</p>
+        <p><LocalizedText text={"Please create a supplier before making a purchase."} /></p>
       )}
 
       {materials.length === 0 && (
-        <p>Please create a material before making a purchase.</p>
+        <p><LocalizedText text={"Please create a material before making a purchase."} /></p>
       )}
 
       <div className="purchase-form-actions">
@@ -259,8 +256,7 @@ export default function PurchaseForm({
           onClick={onCancel}
           disabled={isSubmitting}
         >
-          Cancel
-        </button>
+          <LocalizedText text={"\n          Cancel\n        "} /></button>
 
         <button
           type="submit"
@@ -270,7 +266,7 @@ export default function PurchaseForm({
             materials.length === 0
           }
         >
-          {isSubmitting ? "Creating..." : "Create Purchase"}
+          {translateCurrent(isSubmitting ? "Creating..." : "Create Purchase")}
         </button>
       </div>
     </form>

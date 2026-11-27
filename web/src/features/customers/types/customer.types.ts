@@ -18,3 +18,25 @@ export interface CreateCustomerInput {
   address?: string;
   notes?: string;
 }
+
+export type ReceivableInvoiceStatus = "ISSUED" | "PARTIALLY_PAID" | "PAID";
+
+export interface CustomerReceivablesResponse {
+  customer: Pick<Customer, "id" | "name" | "phone" | "email" | "address">;
+  receivables: {
+    currency: "ETB";
+    totalOutstanding: string;
+    totalInvoiced: string;
+    totalPaid: string;
+    invoices: Array<{
+      id: string;
+      invoiceNumber: string;
+      issueDate: string;
+      dueDate: string | null;
+      status: ReceivableInvoiceStatus;
+      total: string;
+      paidAmount: string;
+      outstandingBalance: string;
+    }>;
+  };
+}

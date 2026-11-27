@@ -1,3 +1,4 @@
+import { LocalizedText, translateCurrent } from "../../../app/providers/LanguageProvider";
 import { Package } from "lucide-react";
 import type { Material } from "../types/material.types";
 
@@ -21,13 +22,13 @@ export default function MaterialsTable({
       <table className="materials-table">
         <thead>
           <tr>
-            <th>Material</th>
-            <th>SKU</th>
-            <th>Type</th>
-            <th>Available Stock</th>
-            <th>Reorder Level</th>
-            <th>Status</th>
-            <th>Action</th>
+            <th><LocalizedText text={"Material"} /></th>
+            <th><LocalizedText text={"SKU"} /></th>
+            <th><LocalizedText text={"Type"} /></th>
+            <th><LocalizedText text={"Available Stock"} /></th>
+            <th><LocalizedText text={"Reorder Level"} /></th>
+            <th><LocalizedText text={"Status"} /></th>
+            <th><LocalizedText text={"Action"} /></th>
           </tr>
         </thead>
 
@@ -35,14 +36,12 @@ export default function MaterialsTable({
           {isLoading ? (
             <tr>
               <td colSpan={7} className="table-message">
-                Loading materials...
-              </td>
+                <LocalizedText text={"\n                Loading materials...\n              "} /></td>
             </tr>
           ) : materials.length === 0 ? (
             <tr>
               <td colSpan={7} className="table-message">
-                No materials found.
-              </td>
+                <LocalizedText text={"\n                No materials found.\n              "} /></td>
             </tr>
           ) : (
             materials.map((material) => {
@@ -78,12 +77,12 @@ export default function MaterialsTable({
                   <td>
                     <span
                       className={`stock-status ${material.isActive === false ? "low" : lowStock ? "low" : "normal"}`}>
-                      {material.isActive === false ? "Archived" : lowStock ? "Low Stock" : "In Stock"}
+                      {translateCurrent(material.isActive === false ? "Archived" : lowStock ? "Low Stock" : "In Stock")}
                     </span>
                   </td>
                   <td>
-                    <button type="button" disabled={isUpdating} onClick={() => onEdit(material)}>Edit</button>{" "}
-                    <button type="button" disabled={isUpdating} onClick={() => onToggleActive(material.id,material.isActive!==false)}>{material.isActive===false?"Restore":"Archive"}</button>
+                    <button type="button" disabled={isUpdating} onClick={() => onEdit(material)}><LocalizedText text={"Edit"} /></button>{" "}
+                    <button type="button" disabled={isUpdating} onClick={() => onToggleActive(material.id,material.isActive!==false)}>{translateCurrent(material.isActive===false?"Restore":"Archive")}</button>
                   </td>
                 </tr>
               );

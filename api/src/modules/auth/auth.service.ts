@@ -1,8 +1,10 @@
 import argon2 from "argon2";
 import { randomBytes } from "node:crypto";
 import { Prisma } from "../../../generated/prisma/client.js";
+import type { UserLanguage } from "../../../generated/prisma/client.js";
 import { prisma } from "../../database/prisma.js";
 import { ensureDefaultUnits } from "../units/units.service.js";
+import { logVerificationEmailFailure, verificationEmailDelivery } from "./email.service.js";
 import {
   assertJwtConfiguration,
   createAccessToken,
@@ -15,10 +17,12 @@ export class AuthError extends Error {
   constructor(
     public readonly code:
       | "EMAIL_EXISTS"
+      | "EMAIL_NOT_VERIFIED"
       | "INVALID_CREDENTIALS"
       | "BUSINESS_SELECTION_REQUIRED"
       | "REFRESH_INVALID"
-      | "REFRESH_REUSED",
+      | "REFRESH_REUSED"
+      | "VERIFICATION_TOKEN_INVALID",
     message: string,
   ) {
     super(message);
@@ -31,6 +35,11 @@ export interface RegisterInput {
   email: string;
   password: string;
   businessName: string;
+  language?: UserLanguage;
+}
+
+export function isUserLanguage(value: unknown): value is UserLanguage {
+  return value === "en" || value === "am";
 }
 
 export interface LoginInput {
@@ -47,6 +56,14 @@ export interface AuthTokens {
   membershipId: string;
   businessId: string;
 }
+
+export interface RegistrationResult {
+  emailSent: boolean;
+}
+
+export const VERIFICATION_TOKEN_DURATION_MS = 24 * 60 * 60 * 1000;
+export const VERIFICATION_RESEND_GENERIC_MESSAGE =
+  "If the address is eligible, verification instructions will be sent. If you do not receive them, you can request another email.";
 
 interface RefreshTokenRecord {
   sessionId: string;
@@ -86,19 +103,20 @@ async function issueAuthTokens(
   };
 }
 
-export async function register(input: RegisterInput): Promise<AuthTokens> {
-  assertJwtConfiguration();
+export async function register(input: RegisterInput): Promise<RegistrationResult> {
   const passwordHash = await argon2.hash(input.password, {
     type: argon2.argon2id,
   });
+  const rawToken = createOpaqueToken();
 
   try {
-    const issued = await prisma.$transaction(async (transaction) => {
+    const registered = await prisma.$transaction(async (transaction) => {
       const user = await transaction.user.create({
         data: {
           fullName: input.fullName,
           email: input.email.toLowerCase(),
           passwordHash,
+          language: input.language ?? "en",
         },
         select: { id: true },
       });
@@ -107,17 +125,35 @@ export async function register(input: RegisterInput): Promise<AuthTokens> {
         select: { id: true },
       });
       await ensureDefaultUnits(transaction, business.id);
-      const membership = await transaction.membership.create({
+      await transaction.membership.create({
         data: { userId: user.id, businessId: business.id, role: "OWNER" },
         select: { id: true },
       });
-      const refresh = await createRefreshToken(transaction, membership.id);
-      return {
-        identity: { userId: user.id, membershipId: membership.id, businessId: business.id },
-        refresh,
-      };
+      const tokenCreatedAt = new Date();
+      await transaction.emailVerificationToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: hashToken(rawToken),
+          createdAt: tokenCreatedAt,
+          expiresAt: new Date(tokenCreatedAt.getTime() + VERIFICATION_TOKEN_DURATION_MS),
+        },
+        select: { id: true },
+      });
+      return { email: input.email.toLowerCase(), fullName: input.fullName };
     });
-    return issueAuthTokens(issued.identity, issued.refresh);
+
+    // Delivery happens only after the account and hashed token have committed.
+    try {
+      await verificationEmailDelivery.send({
+        email: registered.email,
+        fullName: registered.fullName,
+        token: rawToken,
+      });
+      return { emailSent: true };
+    } catch (error) {
+      logVerificationEmailFailure(error, "registration");
+      return { emailSent: false };
+    }
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -153,6 +189,9 @@ export async function login(input: LoginInput): Promise<AuthTokens> {
   }
   if (!user || !user.isActive || !passwordIsValid) {
     throw new AuthError("INVALID_CREDENTIALS", "Invalid email or password");
+  }
+  if (!user.emailVerifiedAt) {
+    throw new AuthError("EMAIL_NOT_VERIFIED", "Please verify your email before signing in.");
   }
 
   let membership;
@@ -205,7 +244,7 @@ export async function refresh(refreshToken: string | undefined): Promise<AuthTok
     include: {
       membership: {
         include: {
-          user: { select: { id: true, isActive: true } },
+          user: { select: { id: true, isActive: true, emailVerifiedAt: true } },
           business: { select: { id: true, isActive: true } },
         },
       },
@@ -225,6 +264,7 @@ export async function refresh(refreshToken: string | undefined): Promise<AuthTok
     current.expiresAt <= new Date() ||
     !current.membership.isActive ||
     !current.membership.user.isActive ||
+    !current.membership.user.emailVerifiedAt ||
     !current.membership.business.isActive
   ) {
     await prisma.session.updateMany({
@@ -295,12 +335,12 @@ export async function getCurrentUser(principal: {
       userId: principal.userId,
       isActive: true,
       business: { isActive: true },
-      user: { isActive: true },
+      user: { isActive: true, emailVerifiedAt: { not: null } },
     },
     select: {
       role: true,
       business: { select: { id: true, name: true } },
-      user: { select: { id: true, fullName: true, email: true } },
+      user: { select: { id: true, fullName: true, email: true, language: true } },
     },
   });
   if (!membership) {
@@ -310,4 +350,120 @@ export async function getCurrentUser(principal: {
     user: membership.user,
     membership: { role: membership.role, business: membership.business },
   };
+}
+
+export async function getUserLanguage(userId: string): Promise<UserLanguage | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { language: true },
+  });
+  return user?.language ?? null;
+}
+
+export async function updateUserLanguage(userId: string, language: UserLanguage): Promise<UserLanguage> {
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { language },
+    select: { language: true },
+  });
+  return user.language;
+}
+
+export async function verifyEmail(rawToken: string): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{43}$/.test(rawToken)) {
+    throw new AuthError("VERIFICATION_TOKEN_INVALID", "Verification link is invalid or expired.");
+  }
+  const tokenHash = hashToken(rawToken);
+
+  await prisma.$transaction(async (transaction) => {
+    const candidate = await transaction.emailVerificationToken.findUnique({
+      where: { tokenHash },
+      select: { userId: true },
+    });
+    if (!candidate) {
+      throw new AuthError("VERIFICATION_TOKEN_INVALID", "Verification link is invalid or expired.");
+    }
+
+    // Verification and resend both lock User first, then update token rows.
+    const locked = await transaction.$queryRaw<Array<{ id: string }>>`
+      SELECT "id" FROM "User" WHERE "id" = ${candidate.userId} FOR UPDATE
+    `;
+    if (locked.length !== 1) {
+      throw new AuthError("VERIFICATION_TOKEN_INVALID", "Verification link is invalid or expired.");
+    }
+
+    const now = new Date();
+    const consumed = await transaction.emailVerificationToken.updateMany({
+      where: {
+        userId: candidate.userId,
+        tokenHash,
+        usedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: now },
+      },
+      data: { usedAt: now },
+    });
+    if (consumed.count !== 1) {
+      throw new AuthError("VERIFICATION_TOKEN_INVALID", "Verification link is invalid or expired.");
+    }
+
+    await transaction.user.updateMany({
+      where: { id: candidate.userId, emailVerifiedAt: null },
+      data: { emailVerifiedAt: now },
+    });
+    await transaction.emailVerificationToken.updateMany({
+      where: {
+        userId: candidate.userId,
+        tokenHash: { not: tokenHash },
+        usedAt: null,
+        revokedAt: null,
+      },
+      data: { revokedAt: now },
+    });
+  });
+}
+
+export async function resendVerification(email: string): Promise<void> {
+  const normalizedEmail = email.toLowerCase();
+  const candidate = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+    select: { id: true },
+  });
+  if (!candidate) return;
+
+  const rawToken = createOpaqueToken();
+  const delivery = await prisma.$transaction(async (transaction) => {
+    const locked = await transaction.$queryRaw<Array<{
+      id: string; fullName: string; email: string; emailVerifiedAt: Date | null;
+    }>>`
+      SELECT "id", "fullName", "email", "emailVerifiedAt"
+      FROM "User" WHERE "id" = ${candidate.id} FOR UPDATE
+    `;
+    const user = locked[0];
+    if (!user || user.emailVerifiedAt) return null;
+
+    const now = new Date();
+    await transaction.emailVerificationToken.updateMany({
+      where: { userId: user.id, usedAt: null, revokedAt: null },
+      data: { revokedAt: now },
+    });
+    const tokenCreatedAt = new Date();
+    await transaction.emailVerificationToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: hashToken(rawToken),
+        createdAt: tokenCreatedAt,
+        expiresAt: new Date(tokenCreatedAt.getTime() + VERIFICATION_TOKEN_DURATION_MS),
+      },
+      select: { id: true },
+    });
+    return { email: user.email, fullName: user.fullName };
+  });
+
+  if (!delivery) return;
+  try {
+    await verificationEmailDelivery.send({ ...delivery, token: rawToken });
+  } catch (error) {
+    logVerificationEmailFailure(error, "resend");
+  }
 }
